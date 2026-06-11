@@ -252,6 +252,10 @@ export default function ProjetoPage() {
                     Abrir Economia Real
                   </Link>
                 )}
+                <Link href={`/projetos/${projeto.id}/simulador-dinamico`}
+                  className="bg-oikos-purple text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:opacity-90 transition-colors inline-block">
+                  Simulador Dinamico
+                </Link>
               </div>
             </div>
           </div>
