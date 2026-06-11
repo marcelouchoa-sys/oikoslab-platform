@@ -4,6 +4,9 @@ import Link from 'next/link'
 import { Projeto } from '@/lib/types'
 
 const TIPO_LABEL: Record<string, string> = {
+  simulador_completo: 'Simulador Completo',
+  cenario_calibrado:  'Cenário Calibrado',
+  construtor_funcoes: 'Construtor de Funções',
   islmbp: 'IS-LM-BP',
   oa_da: 'OA-DA',
   funcao: 'Funções',
@@ -12,6 +15,9 @@ const TIPO_LABEL: Record<string, string> = {
 }
 
 const TIPO_COR: Record<string, string> = {
+  simulador_completo: 'bg-blue-500/20 text-blue-300',
+  cenario_calibrado:  'bg-cyan-500/20 text-cyan-300',
+  construtor_funcoes: 'bg-purple-500/20 text-purple-300',
   islmbp: 'bg-blue-500/20 text-blue-300',
   oa_da: 'bg-green-500/20 text-green-300',
   funcao: 'bg-purple-500/20 text-purple-300',

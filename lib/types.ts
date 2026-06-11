@@ -3,7 +3,7 @@ export type Projeto = {
   user_id: string
   titulo: string
   descricao: string | null
-  tipo: 'islmbp' | 'oa_da' | 'funcao' | 'custom' | 'economia_real'
+  tipo: 'simulador_completo' | 'cenario_calibrado' | 'construtor_funcoes' | 'islmbp' | 'oa_da' | 'funcao' | 'custom' | 'economia_real'
   configuracao: Record<string, any>
   publico: boolean
   created_at: string
@@ -15,6 +15,10 @@ export type Profile = {
   nome: string
   instituicao: string | null
   bio: string | null
+  lattes: string | null
+  linkedin: string | null
+  github: string | null
+  avatar_url: string | null
   created_at: string
 }
 
