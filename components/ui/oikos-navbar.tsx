@@ -12,7 +12,6 @@ export function OikosNavbar() {
     { label: 'Home', href: '/home' },
     { label: 'Sobre', href: '/sobre' },
     { label: 'Contato', href: '/contato' },
-    { label: 'Dashboard', href: '/dashboard' },
   ]
 
   React.useEffect(() => {
