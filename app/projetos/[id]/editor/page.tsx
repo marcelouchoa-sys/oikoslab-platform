@@ -9,6 +9,8 @@ import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import 'katex/dist/katex.min.css'
 import { BlockMath } from 'react-katex'
+import html2canvas from 'html2canvas'
+import jsPDF from 'jspdf'
 
 const Plot = dynamic(() => import('react-plotly.js'), { ssr: false })
 
@@ -110,6 +112,25 @@ export default function EditorPage() {
   }
 
   // Salvar simulação no histórico
+  async function exportarPDF() {
+    const elemento = document.getElementById('resultado-exportar')
+    if (!elemento) return
+
+    const canvas = await html2canvas(elemento, { scale: 2, backgroundColor: '#ffffff' })
+    const imgData = canvas.toDataURL('image/png')
+
+    const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
+    const width  = pdf.internal.pageSize.getWidth()
+    const height = (canvas.height * width) / canvas.width
+
+    pdf.setFontSize(16)
+    pdf.text(tituloModelo, 14, 14)
+    pdf.setFontSize(10)
+    pdf.text(`OikosLab — ${new Date().toLocaleDateString('pt-BR')}`, 14, 22)
+    pdf.addImage(imgData, 'PNG', 0, 28, width, height)
+    pdf.save(`${tituloModelo.replace(/\s+/g, '_')}.pdf`)
+  }
+
   async function salvarSimulacao() {
     if (!resultado || !projeto) return
     const { data: { user } } = await supabase.auth.getUser()
@@ -180,6 +201,10 @@ export default function EditorPage() {
             className="bg-oikos-surface border border-oikos-border text-oikos-muted px-4 py-1.5 rounded-lg text-xs font-medium hover:border-oikos-purple hover:text-oikos-purple transition-colors">
             Editor Visual
           </Link>
+          <button onClick={exportarPDF}
+            className="bg-oikos-surface border border-oikos-border text-oikos-text px-4 py-1.5 rounded-lg text-xs font-medium hover:bg-gray-100 transition-colors">
+            Exportar PDF
+          </button>
           <button onClick={salvar} disabled={salvando}
             className="bg-oikos-surface border border-oikos-border text-oikos-text px-4 py-1.5 rounded-lg text-xs font-medium hover:bg-gray-100 transition-colors disabled:opacity-50">
             {salvando ? 'Salvando...' : 'Salvar'}
@@ -301,7 +326,7 @@ export default function EditorPage() {
             {/* PAINEL DIREITO — resultado */}
             <div className="flex-1 overflow-y-auto h-[calc(100vh-56px)] p-6">
               {resultado ? (
-                <div className="space-y-6">
+                <div id="resultado-exportar" className="space-y-6">
 
                   {/* Erros */}
                   {resultado.erros.length > 0 && (
