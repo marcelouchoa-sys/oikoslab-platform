@@ -26,18 +26,16 @@ export function OikosNavbar() {
       <nav className="max-w-7xl mx-auto h-16 px-6 flex items-center justify-between">
 
         {/* LOGO */}
-        <Link href="/home" className="flex items-center gap-3">
-          <NextImage
-            src="/logo-oikoslab.png"
-            alt="OikosLab"
-            width={36}
-            height={36}
-            className="object-contain"
-          />
-          <span className="text-white font-bold text-xl">
-            OikosLab
-          </span>
-        </Link>
+        <Link href="/home" className="flex items-center">
+  <NextImage
+    src="/logo-oikoslab.png"
+    alt="OikosLab"
+    width={70}
+    height={70}
+    className="object-contain"
+    priority
+  />
+</Link>
 
         {/* DESKTOP */}
         <div className="hidden md:flex items-center gap-2">
