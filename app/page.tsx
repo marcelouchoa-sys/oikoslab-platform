@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { CTASection } from "@/components/ui/cta-section"
 
 export default function Home() {
   const LAB_URL = process.env.NEXT_PUBLIC_LAB_URL || '#'
@@ -140,6 +141,8 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      <CTASection />
 
       {/* FOOTER */}
       <footer className="bg-oikos-surface border-t border-oikos-border py-8 text-center">
