@@ -26,14 +26,14 @@ export function OikosNavbar() {
       <nav className="max-w-7xl mx-auto h-16 px-6 flex items-center justify-between">
 
         {/* LOGO */}
-        <Link href="/home" className="flex items-center">
+<Link href="/home" className="flex items-center">
   <NextImage
     src="/logo-oikoslab.png"
     alt="OikosLab"
-    width={70}
-    height={70}
-    className="object-contain"
+    width={280}
+    height={58}
     priority
+    className="object-contain"
   />
 </Link>
 
