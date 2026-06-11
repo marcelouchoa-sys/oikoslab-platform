@@ -176,6 +176,10 @@ export default function EditorPage() {
             }`}>
             {cenario2.ativo ? 'Comparando' : 'Comparar cenarios'}
           </button>
+          <Link href={`/projetos/${params.id}/editor/visual`}
+            className="bg-oikos-surface border border-oikos-border text-oikos-muted px-4 py-1.5 rounded-lg text-xs font-medium hover:border-oikos-purple hover:text-oikos-purple transition-colors">
+            Editor Visual
+          </Link>
           <button onClick={salvar} disabled={salvando}
             className="bg-oikos-surface border border-oikos-border text-oikos-text px-4 py-1.5 rounded-lg text-xs font-medium hover:bg-gray-100 transition-colors disabled:opacity-50">
             {salvando ? 'Salvando...' : 'Salvar'}
