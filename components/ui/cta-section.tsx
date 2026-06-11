@@ -14,9 +14,6 @@ export function CTASection() {
       <WebGLShader />
       <div className="relative z-10 border border-white/10 p-2 w-full mx-auto max-w-3xl">
         <div className="relative border border-white/10 py-16 px-8 overflow-hidden text-center">
-          <span className="inline-block bg-white/10 text-white text-xs font-semibold tracking-widest uppercase px-4 py-1.5 rounded-full mb-6">
-            Plataforma Econômica
-          </span>
           <h2 className="mb-4 text-white text-5xl font-extrabold tracking-tight leading-tight">
             Comece a analisar<br />economias reais
           </h2>
