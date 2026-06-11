@@ -4,8 +4,8 @@ import { useCallback, useState, useEffect } from 'react'
 import {
   ReactFlow,
   addEdge,
-  applyNodeChanges,
-  applyEdgeChanges,
+  useNodesState,
+  useEdgesState,
   Background,
   Controls,
   MiniMap,
@@ -74,8 +74,8 @@ export default function EditorVisualPage() {
   const supabase = createClient()
 
   const [projeto,      setProjeto]      = useState<any>(null)
-  const [nodes,        setNodes]        = useState<Node[]>([])
-  const [edges,        setEdges]        = useState<Edge[]>([])
+  const [nodes,        setNodes,        onNodesChange] = useNodesState<Node>([])
+  const [edges,        setEdges,        onEdgesChange] = useEdgesState<Edge>([])
   const [salvando,     setSalvando]     = useState(false)
   const [calculando,   setCalculando]   = useState(false)
   const [painelAberto, setPainelAberto] = useState<'add' | null>(null)
@@ -96,30 +96,34 @@ export default function EditorVisualPage() {
     carregar()
   }, [params.id])
 
-  const onNodesChange = useCallback((changes: any) => setNodes(nds => applyNodeChanges(changes, nds)), [])
-  const onEdgesChange = useCallback((changes: any) => setEdges(eds => applyEdgeChanges(changes, eds)), [])
-  const onConnect     = useCallback((connection: Connection) => setEdges(eds => addEdge({ ...connection, animated: true, style: { stroke: '#0066CC' } }, eds)), [])
+  const onConnect = useCallback(
+    (connection: Connection) => setEdges(eds => addEdge({ ...connection, animated: true, style: { stroke: '#0066CC' } }, eds)),
+    [setEdges]
+  )
 
   function adicionarNo() {
+    console.log('[adicionarNo] chamada', { novoTipo, novoNome, novoValor, novaVar, novaExpr })
+
+    if (!novoNome.trim()) {
+      console.warn('[adicionarNo] nome vazio, abortando')
+      return
+    }
+
     const id  = Math.random().toString(36).slice(2)
-    const pos = { x: 100 + nodes.length * 50, y: 100 + nodes.length * 30 }
+    const pos = { x: 150 + nodes.length * 60, y: 100 + nodes.length * 40 }
+
+    let novoNo: Node
 
     if (novoTipo === 'parametro') {
-      setNodes(prev => [...prev, {
-        id, type: 'parametro', position: pos,
-        data: { nome: novoNome, valor: parseFloat(novoValor) || 0 }
-      }])
+      novoNo = { id, type: 'parametro', position: pos, data: { nome: novoNome, valor: parseFloat(novoValor) || 0 } }
     } else if (novoTipo === 'equacao') {
-      setNodes(prev => [...prev, {
-        id, type: 'equacao', position: pos,
-        data: { nome: novoNome, variavel: novaVar, expressao: novaExpr }
-      }])
+      novoNo = { id, type: 'equacao', position: pos, data: { nome: novoNome, variavel: novaVar, expressao: novaExpr } }
     } else {
-      setNodes(prev => [...prev, {
-        id, type: 'resultado', position: pos,
-        data: { nome: novoNome, variavel: novaVar, valor: undefined }
-      }])
+      novoNo = { id, type: 'resultado', position: pos, data: { nome: novoNome, variavel: novaVar, valor: undefined } }
     }
+
+    console.log('[adicionarNo] adicionando nó', novoNo)
+    setNodes(prev => [...prev, novoNo])
 
     setNovoNome(''); setNovoValor(''); setNovaVar(''); setNovaExpr('')
     setPainelAberto(null)
@@ -185,15 +189,15 @@ export default function EditorVisualPage() {
           <span className="text-sm font-semibold text-oikos-text">{projeto?.titulo} — Editor Visual</span>
         </div>
         <div className="flex items-center gap-3">
-          <button onClick={() => setPainelAberto('add')}
+          <button type="button" onClick={() => setPainelAberto('add')}
             className="bg-oikos-surface border border-oikos-border text-oikos-text px-4 py-1.5 rounded-lg text-xs font-medium hover:bg-gray-100 transition-colors">
             + Adicionar bloco
           </button>
-          <button onClick={calcular} disabled={calculando}
+          <button type="button" onClick={calcular} disabled={calculando}
             className="bg-oikos-green text-white px-4 py-1.5 rounded-lg text-xs font-semibold hover:opacity-90 transition-colors disabled:opacity-50">
             {calculando ? 'Calculando...' : 'Calcular'}
           </button>
-          <button onClick={salvar} disabled={salvando}
+          <button type="button" onClick={salvar} disabled={salvando}
             className="bg-oikos-blue text-white px-4 py-1.5 rounded-lg text-xs font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50">
             {salvando ? 'Salvando...' : 'Salvar'}
           </button>
@@ -220,8 +224,14 @@ export default function EditorVisualPage() {
 
       {/* PAINEL ADICIONAR BLOCO */}
       {painelAberto === 'add' && (
-        <div className="fixed inset-0 bg-black/20 z-50 flex items-center justify-center" onClick={() => setPainelAberto(null)}>
-          <div className="bg-white rounded-2xl p-6 w-96 shadow-xl" onClick={e => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 bg-black/20 z-50 flex items-center justify-center"
+          onClick={() => setPainelAberto(null)}
+        >
+          <div
+            className="bg-white rounded-2xl p-6 w-96 shadow-xl"
+            onClick={e => e.stopPropagation()}
+          >
             <h3 className="text-lg font-semibold text-oikos-text mb-4">Adicionar bloco</h3>
 
             <div className="flex gap-2 mb-4">
@@ -230,7 +240,7 @@ export default function EditorVisualPage() {
                 { id: 'equacao',   label: 'Equacao' },
                 { id: 'resultado', label: 'Resultado' },
               ] as const).map(t => (
-                <button key={t.id} onClick={() => setNovoTipo(t.id)}
+                <button type="button" key={t.id} onClick={() => setNovoTipo(t.id)}
                   className={`flex-1 py-2 text-xs font-medium rounded-lg border transition-colors ${novoTipo === t.id ? 'bg-oikos-blue text-white border-oikos-blue' : 'border-oikos-border text-oikos-muted hover:border-oikos-blue'}`}>
                   {t.label}
                 </button>
@@ -240,45 +250,66 @@ export default function EditorVisualPage() {
             <div className="space-y-3">
               <div>
                 <label className="text-xs font-medium text-oikos-muted block mb-1">Nome</label>
-                <input value={novoNome} onChange={e => setNovoNome(e.target.value)}
+                <input
+                  value={novoNome}
+                  onChange={e => setNovoNome(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && adicionarNo()}
                   placeholder="Ex: Consumo, c0, Produto..."
-                  className="w-full border border-oikos-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-oikos-blue" />
+                  className="w-full border border-oikos-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-oikos-blue"
+                />
               </div>
 
               {novoTipo === 'parametro' && (
                 <div>
                   <label className="text-xs font-medium text-oikos-muted block mb-1">Valor</label>
-                  <input type="number" value={novoValor} onChange={e => setNovoValor(e.target.value)}
+                  <input
+                    type="number"
+                    value={novoValor}
+                    onChange={e => setNovoValor(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && adicionarNo()}
                     placeholder="Ex: 100"
-                    className="w-full border border-oikos-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-oikos-blue" />
+                    className="w-full border border-oikos-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-oikos-blue"
+                  />
                 </div>
               )}
 
               {(novoTipo === 'equacao' || novoTipo === 'resultado') && (
                 <div>
                   <label className="text-xs font-medium text-oikos-muted block mb-1">Variavel</label>
-                  <input value={novaVar} onChange={e => setNovaVar(e.target.value)}
+                  <input
+                    value={novaVar}
+                    onChange={e => setNovaVar(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && adicionarNo()}
                     placeholder="Ex: C, Y, I..."
-                    className="w-full border border-oikos-border rounded-xl px-3 py-2 text-sm font-mono focus:outline-none focus:border-oikos-blue" />
+                    className="w-full border border-oikos-border rounded-xl px-3 py-2 text-sm font-mono focus:outline-none focus:border-oikos-blue"
+                  />
                 </div>
               )}
 
               {novoTipo === 'equacao' && (
                 <div>
                   <label className="text-xs font-medium text-oikos-muted block mb-1">Expressao</label>
-                  <input value={novaExpr} onChange={e => setNovaExpr(e.target.value)}
+                  <input
+                    value={novaExpr}
+                    onChange={e => setNovaExpr(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && adicionarNo()}
                     placeholder="Ex: c0 + c1*(Y-T)"
-                    className="w-full border border-oikos-border rounded-xl px-3 py-2 text-sm font-mono focus:outline-none focus:border-oikos-blue" />
+                    className="w-full border border-oikos-border rounded-xl px-3 py-2 text-sm font-mono focus:outline-none focus:border-oikos-blue"
+                  />
                 </div>
               )}
             </div>
 
             <div className="flex gap-2 mt-5">
-              <button onClick={adicionarNo}
+              <button
+                type="button"
+                onClick={adicionarNo}
                 className="flex-1 bg-oikos-blue text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 transition-colors">
                 Adicionar
               </button>
-              <button onClick={() => setPainelAberto(null)}
+              <button
+                type="button"
+                onClick={() => setPainelAberto(null)}
                 className="flex-1 bg-oikos-surface border border-oikos-border text-oikos-text py-2.5 rounded-xl text-sm font-medium hover:bg-gray-100 transition-colors">
                 Cancelar
               </button>
