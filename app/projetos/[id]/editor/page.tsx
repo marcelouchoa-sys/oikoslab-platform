@@ -51,6 +51,7 @@ export default function EditorPage() {
   const [varLivre, setVarLivre] = useState({ nome: 'Y', min: 0, max: 2000, ativo: false })
   const [notas,    setNotas]    = useState<NotaBloco[]>([{ id: uid(), conteudo: '' }])
   const [tituloModelo, setTituloModelo] = useState('Meu Modelo')
+  const [validacoes, setValidacoes] = useState<Record<string, boolean | null>>({})
 
   // Carregar projeto
   useEffect(() => {
@@ -111,6 +112,19 @@ export default function EditorPage() {
       resultado:  resultado.valores,
     })
     alert('Simulação salva no histórico!')
+  }
+
+  async function validarExpressao(id: string, expressao: string) {
+    if (!expressao.trim()) return
+    try {
+      const res = await api.modelo.validar({
+        expressao,
+        parametros: Object.fromEntries(parametros.map(p => [p.nome, p.valor]))
+      })
+      setValidacoes(prev => ({ ...prev, [id]: res.valido }))
+    } catch {
+      setValidacoes(prev => ({ ...prev, [id]: false }))
+    }
   }
 
   if (loading) return (
@@ -214,9 +228,15 @@ export default function EditorPage() {
                         <span className="text-xs text-oikos-muted font-mono">=</span>
                         <input value={eq.expressao} onChange={e => {
                             const novo = [...equacoes]; novo[i].expressao = e.target.value; setEquacoes(novo)
+                            clearTimeout((window as any)[`timer_${eq.id}`])
+                            ;(window as any)[`timer_${eq.id}`] = setTimeout(() => validarExpressao(eq.id, e.target.value), 500)
                           }}
                           placeholder="expressao..."
-                          className="flex-1 border border-oikos-border rounded-md px-2 py-1 text-xs font-mono focus:outline-none focus:border-oikos-blue bg-white" />
+                          className={`flex-1 border rounded-md px-2 py-1 text-xs font-mono focus:outline-none bg-white transition-colors ${
+                            validacoes[eq.id] === true  ? 'border-green-400 focus:border-green-500' :
+                            validacoes[eq.id] === false ? 'border-red-400 focus:border-red-500' :
+                            'border-oikos-border focus:border-oikos-blue'
+                          }`} />
                       </div>
                     </div>
                   ))}
