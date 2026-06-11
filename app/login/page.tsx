@@ -4,126 +4,287 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { Landmark } from 'lucide-react'
 
 export default function LoginPage() {
   const [tab, setTab] = useState<'login' | 'cadastro'>('login')
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
-  const [nome, setNome] = useState('')
   const [senha2, setSenha2] = useState('')
+  const [nome, setNome] = useState('')
   const [loading, setLoading] = useState(false)
-  const [msg, setMsg] = useState<{ tipo: 'ok' | 'erro', texto: string } | null>(null)
+  const [msg, setMsg] = useState<{
+    tipo: 'ok' | 'erro'
+    texto: string
+  } | null>(null)
+
   const router = useRouter()
   const supabase = createClient()
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
+
     setLoading(true)
     setMsg(null)
-    const { error } = await supabase.auth.signInWithPassword({ email, password: senha })
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password: senha,
+    })
+
     if (error) {
-      setMsg({ tipo: 'erro', texto: 'Email ou senha incorretos.' })
+      setMsg({
+        tipo: 'erro',
+        texto: 'Email ou senha incorretos.',
+      })
     } else {
       router.push('/dashboard')
       router.refresh()
     }
+
     setLoading(false)
   }
 
   async function handleCadastro(e: React.FormEvent) {
     e.preventDefault()
-    if (senha !== senha2) return setMsg({ tipo: 'erro', texto: 'As senhas nao conferem.' })
-    if (senha.length < 6) return setMsg({ tipo: 'erro', texto: 'Senha deve ter pelo menos 6 caracteres.' })
+
+    if (senha !== senha2) {
+      return setMsg({
+        tipo: 'erro',
+        texto: 'As senhas não conferem.',
+      })
+    }
+
+    if (senha.length < 6) {
+      return setMsg({
+        tipo: 'erro',
+        texto: 'A senha deve ter pelo menos 6 caracteres.',
+      })
+    }
+
     setLoading(true)
     setMsg(null)
+
     const { error } = await supabase.auth.signUp({
-      email, password: senha,
-      options: { data: { nome } }
+      email,
+      password: senha,
+      options: {
+        data: {
+          nome,
+        },
+      },
     })
+
     if (error) {
-      setMsg({ tipo: 'erro', texto: error.message })
+      setMsg({
+        tipo: 'erro',
+        texto: error.message,
+      })
     } else {
-      setMsg({ tipo: 'ok', texto: 'Conta criada! Verifique seu email para confirmar.' })
+      setMsg({
+        tipo: 'ok',
+        texto: 'Conta criada com sucesso! Verifique seu email.',
+      })
     }
+
     setLoading(false)
   }
 
   return (
-    <main className="min-h-screen bg-oikos-surface flex items-center justify-center px-4">
-      <div className="w-full max-w-md bg-white border border-oikos-border rounded-2xl p-10 shadow-sm">
+    <main className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 flex items-center justify-center px-4 py-10 overflow-hidden relative">
+      
+      {/* Glow background */}
+      <div className="absolute top-0 left-0 w-96 h-96 bg-blue-600/20 blur-[120px]" />
+      <div className="absolute bottom-0 right-0 w-96 h-96 bg-cyan-500/20 blur-[120px]" />
 
-        <Link href="/" className="text-xl font-bold text-oikos-text tracking-tight block mb-8">
-          OikosLab
-        </Link>
+      <div className="relative z-10 w-full max-w-md rounded-3xl border border-white/10 bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-xl shadow-2xl p-8">
 
-        <div className="flex gap-1 bg-oikos-surface rounded-xl p-1 mb-8">
-          <button onClick={() => { setTab('login'); setMsg(null) }}
-            className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${tab === 'login' ? 'bg-white text-oikos-text shadow-sm' : 'text-oikos-muted'}`}>
+        {/* Logo */}
+        <div className="flex flex-col items-center mb-8">
+          <div className="w-14 h-14 rounded-full bg-white/10 border border-white/10 flex items-center justify-center mb-4">
+            <Landmark className="w-7 h-7 text-white" />
+          </div>
+
+          <Link
+            href="/"
+            className="text-3xl font-bold text-white tracking-tight"
+          >
+            OikosLab
+          </Link>
+
+          <p className="text-gray-400 text-sm mt-2 text-center">
+            Plataforma de pesquisa econômica e análise de dados
+          </p>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex bg-white/5 p-1 rounded-xl mb-6">
+          <button
+            onClick={() => {
+              setTab('login')
+              setMsg(null)
+            }}
+            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
+              tab === 'login'
+                ? 'bg-white/10 text-white shadow'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
             Entrar
           </button>
-          <button onClick={() => { setTab('cadastro'); setMsg(null) }}
-            className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${tab === 'cadastro' ? 'bg-white text-oikos-text shadow-sm' : 'text-oikos-muted'}`}>
-            Criar conta
+
+          <button
+            onClick={() => {
+              setTab('cadastro')
+              setMsg(null)
+            }}
+            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
+              tab === 'cadastro'
+                ? 'bg-white/10 text-white shadow'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            Criar Conta
           </button>
         </div>
 
+        {/* LOGIN */}
         {tab === 'login' ? (
           <form onSubmit={handleLogin} className="space-y-4">
+
             <div>
-              <label className="text-sm font-medium text-oikos-text block mb-1.5">Email</label>
-              <input type="email" value={email} onChange={e => setEmail(e.target.value)}
-                placeholder="seu@email.com" required
-                className="w-full border border-oikos-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-oikos-blue transition-colors" />
+              <label className="text-sm text-gray-300 mb-2 block">
+                Email
+              </label>
+
+              <input
+                type="email"
+                placeholder="seu@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="w-full px-5 py-3 rounded-xl bg-white/10 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
             </div>
+
             <div>
-              <label className="text-sm font-medium text-oikos-text block mb-1.5">Senha</label>
-              <input type="password" value={senha} onChange={e => setSenha(e.target.value)}
-                placeholder="Sua senha" required
-                className="w-full border border-oikos-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-oikos-blue transition-colors" />
+              <label className="text-sm text-gray-300 mb-2 block">
+                Senha
+              </label>
+
+              <input
+                type="password"
+                placeholder="Sua senha"
+                value={senha}
+                onChange={(e) => setSenha(e.target.value)}
+                required
+                className="w-full px-5 py-3 rounded-xl bg-white/10 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
             </div>
-            <button type="submit" disabled={loading}
-              className="w-full bg-oikos-blue text-white py-3 rounded-xl text-sm font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 mt-2">
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3 rounded-full bg-white/10 hover:bg-white/20 text-white font-medium transition-all disabled:opacity-50"
+            >
               {loading ? 'Entrando...' : 'Entrar'}
             </button>
+
           </form>
         ) : (
+          /* CADASTRO */
           <form onSubmit={handleCadastro} className="space-y-4">
+
             <div>
-              <label className="text-sm font-medium text-oikos-text block mb-1.5">Nome</label>
-              <input type="text" value={nome} onChange={e => setNome(e.target.value)}
-                placeholder="Seu nome" required
-                className="w-full border border-oikos-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-oikos-blue transition-colors" />
+              <label className="text-sm text-gray-300 mb-2 block">
+                Nome
+              </label>
+
+              <input
+                type="text"
+                placeholder="Seu nome"
+                value={nome}
+                onChange={(e) => setNome(e.target.value)}
+                required
+                className="w-full px-5 py-3 rounded-xl bg-white/10 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
             </div>
+
             <div>
-              <label className="text-sm font-medium text-oikos-text block mb-1.5">Email</label>
-              <input type="email" value={email} onChange={e => setEmail(e.target.value)}
-                placeholder="seu@email.com" required
-                className="w-full border border-oikos-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-oikos-blue transition-colors" />
+              <label className="text-sm text-gray-300 mb-2 block">
+                Email
+              </label>
+
+              <input
+                type="email"
+                placeholder="seu@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="w-full px-5 py-3 rounded-xl bg-white/10 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
             </div>
+
             <div>
-              <label className="text-sm font-medium text-oikos-text block mb-1.5">Senha</label>
-              <input type="password" value={senha} onChange={e => setSenha(e.target.value)}
-                placeholder="Minimo 6 caracteres" required
-                className="w-full border border-oikos-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-oikos-blue transition-colors" />
+              <label className="text-sm text-gray-300 mb-2 block">
+                Senha
+              </label>
+
+              <input
+                type="password"
+                placeholder="Mínimo 6 caracteres"
+                value={senha}
+                onChange={(e) => setSenha(e.target.value)}
+                required
+                className="w-full px-5 py-3 rounded-xl bg-white/10 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
             </div>
+
             <div>
-              <label className="text-sm font-medium text-oikos-text block mb-1.5">Confirmar senha</label>
-              <input type="password" value={senha2} onChange={e => setSenha2(e.target.value)}
-                placeholder="Repita a senha" required
-                className="w-full border border-oikos-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-oikos-blue transition-colors" />
+              <label className="text-sm text-gray-300 mb-2 block">
+                Confirmar senha
+              </label>
+
+              <input
+                type="password"
+                placeholder="Repita sua senha"
+                value={senha2}
+                onChange={(e) => setSenha2(e.target.value)}
+                required
+                className="w-full px-5 py-3 rounded-xl bg-white/10 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
             </div>
-            <button type="submit" disabled={loading}
-              className="w-full bg-oikos-blue text-white py-3 rounded-xl text-sm font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 mt-2">
-              {loading ? 'Criando...' : 'Criar conta'}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3 rounded-full bg-white/10 hover:bg-white/20 text-white font-medium transition-all disabled:opacity-50"
+            >
+              {loading ? 'Criando conta...' : 'Criar Conta'}
             </button>
+
           </form>
         )}
 
+        {/* Mensagens */}
         {msg && (
-          <div className={`mt-4 p-3 rounded-xl text-sm ${msg.tipo === 'ok' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+          <div
+            className={`mt-5 rounded-xl p-3 text-sm ${
+              msg.tipo === 'ok'
+                ? 'bg-green-500/15 text-green-300 border border-green-500/20'
+                : 'bg-red-500/15 text-red-300 border border-red-500/20'
+            }`}
+          >
             {msg.texto}
           </div>
         )}
+
+        {/* Footer */}
+        <div className="mt-8 text-center">
+          <p className="text-xs text-gray-500">
+            Desenvolvido para pesquisadores, estudantes e analistas econômicos.
+          </p>
+        </div>
 
       </div>
     </main>
