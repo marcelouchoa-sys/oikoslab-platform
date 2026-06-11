@@ -1,61 +1,63 @@
 'use client'
 
-import { useCallback, useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   ReactFlow,
+  ReactFlowProvider,
   addEdge,
-  useNodesState,
-  useEdgesState,
   Background,
   Controls,
   MiniMap,
   Handle,
   Position,
+  useNodesState,
+  useEdgesState,
+  useReactFlow,
+  type Connection,
   type Node,
   type Edge,
-  type Connection,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { createClient } from '@/lib/supabase'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 
-// ── Tipos de nós ─────────────────────────────────────────────────
+// ── Tipos de nós (definidos fora do componente para estabilidade) ─
 
 function ParametroNode({ data, selected }: any) {
   return (
-    <div className={`bg-white border-2 rounded-xl p-3 min-w-32 shadow-sm transition-all ${selected ? 'border-oikos-blue' : 'border-oikos-border'}`}>
-      <div className="text-xs font-semibold uppercase tracking-widest text-oikos-muted mb-1">Parametro</div>
-      <div className="flex items-center gap-1">
-        <span className="text-sm font-mono font-bold text-oikos-text">{data.nome}</span>
-        <span className="text-xs text-oikos-muted">=</span>
-        <span className="text-sm font-mono text-oikos-blue">{data.valor}</span>
+    <div style={{ background: '#fff', border: `2px solid ${selected ? '#0066CC' : '#D2D2D7'}`, borderRadius: 12, padding: '10px 14px', minWidth: 130, boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
+      <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: '#6B7280', marginBottom: 4 }}>Parametro</div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+        <span style={{ fontSize: 14, fontFamily: 'monospace', fontWeight: 700, color: '#111' }}>{data.nome}</span>
+        <span style={{ fontSize: 12, color: '#9CA3AF' }}>=</span>
+        <span style={{ fontSize: 14, fontFamily: 'monospace', color: '#0066CC' }}>{data.valor}</span>
       </div>
-      <Handle type="source" position={Position.Right} className="w-2 h-2 bg-oikos-blue border-0" />
+      <Handle type="source" position={Position.Right} style={{ width: 8, height: 8, background: '#0066CC', border: 'none' }} />
     </div>
   )
 }
 
 function EquacaoNode({ data, selected }: any) {
   return (
-    <div className={`bg-white border-2 rounded-xl p-3 min-w-40 shadow-sm transition-all ${selected ? 'border-oikos-purple' : 'border-oikos-border'}`}>
-      <Handle type="target" position={Position.Left} className="w-2 h-2 bg-oikos-purple border-0" />
-      <div className="text-xs font-semibold uppercase tracking-widest text-oikos-muted mb-1">{data.nome || 'Equacao'}</div>
-      <div className="text-sm font-mono font-bold text-oikos-text">{data.variavel}</div>
-      <div className="text-xs font-mono text-oikos-muted mt-0.5">= {data.expressao}</div>
-      <Handle type="source" position={Position.Right} className="w-2 h-2 bg-oikos-green border-0" />
+    <div style={{ background: '#fff', border: `2px solid ${selected ? '#7C3AED' : '#D2D2D7'}`, borderRadius: 12, padding: '10px 14px', minWidth: 160, boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
+      <Handle type="target" position={Position.Left} style={{ width: 8, height: 8, background: '#7C3AED', border: 'none' }} />
+      <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: '#6B7280', marginBottom: 4 }}>{data.nome || 'Equacao'}</div>
+      <div style={{ fontSize: 14, fontFamily: 'monospace', fontWeight: 700, color: '#111' }}>{data.variavel}</div>
+      <div style={{ fontSize: 11, fontFamily: 'monospace', color: '#9CA3AF', marginTop: 2 }}>= {data.expressao}</div>
+      <Handle type="source" position={Position.Right} style={{ width: 8, height: 8, background: '#16A34A', border: 'none' }} />
     </div>
   )
 }
 
 function ResultadoNode({ data, selected }: any) {
   return (
-    <div className={`bg-white border-2 rounded-xl p-3 min-w-32 shadow-sm transition-all ${selected ? 'border-oikos-green' : 'border-oikos-border'}`}>
-      <Handle type="target" position={Position.Left} className="w-2 h-2 bg-oikos-green border-0" />
-      <div className="text-xs font-semibold uppercase tracking-widest text-oikos-muted mb-1">Resultado</div>
-      <div className="text-sm font-mono font-bold text-oikos-text">{data.variavel}</div>
+    <div style={{ background: '#fff', border: `2px solid ${selected ? '#16A34A' : '#D2D2D7'}`, borderRadius: 12, padding: '10px 14px', minWidth: 130, boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
+      <Handle type="target" position={Position.Left} style={{ width: 8, height: 8, background: '#16A34A', border: 'none' }} />
+      <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: '#6B7280', marginBottom: 4 }}>Resultado</div>
+      <div style={{ fontSize: 14, fontFamily: 'monospace', fontWeight: 700, color: '#111' }}>{data.variavel}</div>
       {data.valor !== undefined && (
-        <div className="text-lg font-bold text-oikos-green mt-1">{Number(data.valor).toFixed(2)}</div>
+        <div style={{ fontSize: 20, fontWeight: 700, color: '#16A34A', marginTop: 4 }}>{Number(data.valor).toFixed(2)}</div>
       )}
     </div>
   )
@@ -67,145 +69,106 @@ const nodeTypes = {
   resultado: ResultadoNode,
 }
 
-// ── Página principal ──────────────────────────────────────────────
-export default function EditorVisualPage() {
-  const params   = useParams()
-  const router   = useRouter()
-  const supabase = createClient()
+// ── Canvas interno (usa useReactFlow que requer ReactFlowProvider) ─
 
-  const [projeto,      setProjeto]      = useState<any>(null)
-  const [nodes,        setNodes,        onNodesChange] = useNodesState<Node>([])
-  const [edges,        setEdges,        onEdgesChange] = useEdgesState<Edge>([])
-  const [salvando,     setSalvando]     = useState(false)
-  const [calculando,   setCalculando]   = useState(false)
+interface FlowEditorProps {
+  projeto: any
+  onSalvar: (nodes: Node[], edges: Edge[]) => void
+  salvando: boolean
+  calculando: boolean
+  onCalcular: () => void
+}
+
+function FlowEditor({ projeto, onSalvar, salvando, calculando, onCalcular }: FlowEditorProps) {
+  const params = useParams()
+  const { setNodes, setEdges, getNodes, getEdges } = useReactFlow()
+  const [nodes, , onNodesChange] = useNodesState([])
+  const [edges, , onEdgesChange] = useEdgesState([])
+
   const [painelAberto, setPainelAberto] = useState<'add' | null>(null)
-  const [novoNome,     setNovoNome]     = useState('')
-  const [novoValor,    setNovoValor]    = useState('')
-  const [novoTipo,     setNovoTipo]     = useState<'parametro' | 'equacao' | 'resultado'>('parametro')
-  const [novaVar,      setNovaVar]      = useState('')
-  const [novaExpr,     setNovaExpr]     = useState('')
+  const [novoNome,  setNovoNome]  = useState('')
+  const [novoValor, setNovoValor] = useState('')
+  const [novoTipo,  setNovoTipo]  = useState<'parametro' | 'equacao' | 'resultado'>('parametro')
+  const [novaVar,   setNovaVar]   = useState('')
+  const [novaExpr,  setNovaExpr]  = useState('')
 
+  // Carregar nós salvos do projeto
   useEffect(() => {
-    async function carregar() {
-      const { data } = await supabase.from('projetos').select('*').eq('id', params.id).single()
-      if (!data) { router.push('/projetos'); return }
-      setProjeto(data)
-      if (data.configuracao?.visual_nodes) setNodes(data.configuracao.visual_nodes)
-      if (data.configuracao?.visual_edges) setEdges(data.configuracao.visual_edges)
+    if (projeto?.configuracao?.visual_nodes?.length) {
+      setNodes(projeto.configuracao.visual_nodes)
     }
-    carregar()
-  }, [params.id])
+    if (projeto?.configuracao?.visual_edges?.length) {
+      setEdges(projeto.configuracao.visual_edges)
+    }
+  }, [projeto?.id])
 
   const onConnect = useCallback(
-    (connection: Connection) => setEdges(eds => addEdge({ ...connection, animated: true, style: { stroke: '#0066CC' } }, eds)),
+    (connection: Connection) =>
+      setEdges(eds => addEdge({ ...connection, animated: true, style: { stroke: '#0066CC' } }, eds)),
     [setEdges]
   )
 
   function adicionarNo() {
-    console.log('[adicionarNo] chamada', { novoTipo, novoNome, novoValor, novaVar, novaExpr })
+    console.log('[adicionarNo]', { novoTipo, novoNome, novoValor })
 
-    if (!novoNome.trim()) {
-      console.warn('[adicionarNo] nome vazio, abortando')
-      return
-    }
+    if (!novoNome.trim()) return
 
-    const id  = Math.random().toString(36).slice(2)
-    const pos = { x: 150 + nodes.length * 60, y: 100 + nodes.length * 40 }
+    const id  = crypto.randomUUID()
+    const currentNodes = getNodes()
+    const pos = { x: 150 + currentNodes.length * 60, y: 100 + currentNodes.length * 40 }
 
-    let novoNo: Node
+    const novoNo: Node =
+      novoTipo === 'parametro'
+        ? { id, type: 'parametro', position: pos, data: { nome: novoNome, valor: parseFloat(novoValor) || 0 } }
+        : novoTipo === 'equacao'
+        ? { id, type: 'equacao',   position: pos, data: { nome: novoNome, variavel: novaVar, expressao: novaExpr } }
+        : { id, type: 'resultado', position: pos, data: { nome: novoNome, variavel: novaVar, valor: undefined } }
 
-    if (novoTipo === 'parametro') {
-      novoNo = { id, type: 'parametro', position: pos, data: { nome: novoNome, valor: parseFloat(novoValor) || 0 } }
-    } else if (novoTipo === 'equacao') {
-      novoNo = { id, type: 'equacao', position: pos, data: { nome: novoNome, variavel: novaVar, expressao: novaExpr } }
-    } else {
-      novoNo = { id, type: 'resultado', position: pos, data: { nome: novoNome, variavel: novaVar, valor: undefined } }
-    }
-
-    console.log('[adicionarNo] adicionando nó', novoNo)
+    console.log('[adicionarNo] novo nó criado:', novoNo)
     setNodes(prev => [...prev, novoNo])
+    console.log('[adicionarNo] setNodes chamado, total de nós agora:', getNodes().length + 1)
 
     setNovoNome(''); setNovoValor(''); setNovaVar(''); setNovaExpr('')
     setPainelAberto(null)
   }
 
-  async function salvar() {
-    if (!projeto) return
-    setSalvando(true)
-    await supabase.from('projetos').update({
-      configuracao: {
-        ...projeto.configuracao,
-        visual_nodes: nodes,
-        visual_edges: edges,
-      },
-      updated_at: new Date().toISOString(),
-    }).eq('id', projeto.id)
-    setSalvando(false)
+  function handleSalvar() {
+    onSalvar(getNodes(), getEdges())
   }
 
-  async function calcular() {
-    setCalculando(true)
-    try {
-      const parametros = nodes
-        .filter(n => n.type === 'parametro')
-        .map(n => ({ nome: n.data.nome as string, valor: n.data.valor as number, descricao: '' }))
-
-      const equacoes = nodes
-        .filter(n => n.type === 'equacao')
-        .map(n => ({ nome: n.data.nome as string, variavel: n.data.variavel as string, expressao: n.data.expressao as string }))
-
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-      const res = await fetch(`${API_URL}/modelo/resolver`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ parametros, equacoes }),
-      })
-      const data = await res.json()
-
-      if (data.valores) {
-        setNodes(prev => prev.map(n => {
-          if (n.type === 'resultado' && data.valores[n.data.variavel as string] !== undefined) {
-            return { ...n, data: { ...n.data, valor: data.valores[n.data.variavel as string] } }
-          }
-          return n
-        }))
-      }
-    } catch (e) {
-      console.error(e)
-    }
-    setCalculando(false)
+  function handleCalcular() {
+    onCalcular()
   }
 
   return (
-    <main className="min-h-screen bg-white flex flex-col">
-
-      {/* HEADER */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-oikos-border px-6 h-14 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link href={`/projetos/${params.id}/editor`} className="text-sm text-oikos-muted hover:text-oikos-blue transition-colors">
+    <div className="flex flex-col h-screen">
+      {/* TOOLBAR */}
+      <div className="flex items-center justify-between px-4 h-12 bg-white border-b border-gray-200 shrink-0 z-10">
+        <div className="flex items-center gap-3">
+          <Link href={`/projetos/${params.id}/editor`} className="text-sm text-gray-500 hover:text-blue-600 transition-colors">
             ← Editor texto
           </Link>
-          <span className="text-oikos-border">|</span>
-          <span className="text-sm font-semibold text-oikos-text">{projeto?.titulo} — Editor Visual</span>
+          <span className="text-gray-300">|</span>
+          <span className="text-sm font-semibold text-gray-800">{projeto?.titulo} — Editor Visual</span>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <button type="button" onClick={() => setPainelAberto('add')}
-            className="bg-oikos-surface border border-oikos-border text-oikos-text px-4 py-1.5 rounded-lg text-xs font-medium hover:bg-gray-100 transition-colors">
+            className="border border-gray-200 bg-gray-50 text-gray-700 px-4 py-1.5 rounded-lg text-xs font-medium hover:bg-gray-100 transition-colors">
             + Adicionar bloco
           </button>
-          <button type="button" onClick={calcular} disabled={calculando}
-            className="bg-oikos-green text-white px-4 py-1.5 rounded-lg text-xs font-semibold hover:opacity-90 transition-colors disabled:opacity-50">
+          <button type="button" onClick={handleCalcular} disabled={calculando}
+            className="bg-green-600 text-white px-4 py-1.5 rounded-lg text-xs font-semibold hover:bg-green-700 transition-colors disabled:opacity-50">
             {calculando ? 'Calculando...' : 'Calcular'}
           </button>
-          <button type="button" onClick={salvar} disabled={salvando}
-            className="bg-oikos-blue text-white px-4 py-1.5 rounded-lg text-xs font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50">
+          <button type="button" onClick={handleSalvar} disabled={salvando}
+            className="bg-blue-600 text-white px-4 py-1.5 rounded-lg text-xs font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50">
             {salvando ? 'Salvando...' : 'Salvar'}
           </button>
         </div>
-      </header>
+      </div>
 
       {/* CANVAS */}
-      <div className="pt-14 flex-1 h-[calc(100vh-56px)]">
+      <div className="flex-1 w-full">
         <ReactFlow
           nodes={nodes}
           edges={edges}
@@ -214,7 +177,7 @@ export default function EditorVisualPage() {
           onConnect={onConnect}
           nodeTypes={nodeTypes}
           fitView
-          className="bg-oikos-surface"
+          style={{ background: '#F5F5F7' }}
         >
           <Background color="#D2D2D7" gap={20} />
           <Controls />
@@ -222,102 +185,156 @@ export default function EditorVisualPage() {
         </ReactFlow>
       </div>
 
-      {/* PAINEL ADICIONAR BLOCO */}
+      {/* MODAL ADICIONAR BLOCO */}
       {painelAberto === 'add' && (
         <div
-          className="fixed inset-0 bg-black/20 z-50 flex items-center justify-center"
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.2)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           onClick={() => setPainelAberto(null)}
         >
           <div
-            className="bg-white rounded-2xl p-6 w-96 shadow-xl"
+            style={{ background: '#fff', borderRadius: 16, padding: 24, width: 384, boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }}
             onClick={e => e.stopPropagation()}
           >
-            <h3 className="text-lg font-semibold text-oikos-text mb-4">Adicionar bloco</h3>
+            <h3 style={{ fontSize: 18, fontWeight: 600, color: '#111', marginBottom: 16 }}>Adicionar bloco</h3>
 
-            <div className="flex gap-2 mb-4">
-              {([
-                { id: 'parametro', label: 'Parametro' },
-                { id: 'equacao',   label: 'Equacao' },
-                { id: 'resultado', label: 'Resultado' },
-              ] as const).map(t => (
-                <button type="button" key={t.id} onClick={() => setNovoTipo(t.id)}
-                  className={`flex-1 py-2 text-xs font-medium rounded-lg border transition-colors ${novoTipo === t.id ? 'bg-oikos-blue text-white border-oikos-blue' : 'border-oikos-border text-oikos-muted hover:border-oikos-blue'}`}>
-                  {t.label}
+            {/* Tipo */}
+            <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+              {(['parametro', 'equacao', 'resultado'] as const).map(t => (
+                <button type="button" key={t} onClick={() => setNovoTipo(t)}
+                  style={{
+                    flex: 1, padding: '6px 0', fontSize: 11, fontWeight: 600, borderRadius: 8, border: `1.5px solid ${novoTipo === t ? '#0066CC' : '#E5E7EB'}`,
+                    background: novoTipo === t ? '#0066CC' : '#fff', color: novoTipo === t ? '#fff' : '#6B7280', cursor: 'pointer', transition: 'all .15s',
+                    textTransform: 'capitalize'
+                  }}>
+                  {t}
                 </button>
               ))}
             </div>
 
-            <div className="space-y-3">
+            {/* Campos */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div>
-                <label className="text-xs font-medium text-oikos-muted block mb-1">Nome</label>
+                <label style={{ fontSize: 11, fontWeight: 600, color: '#6B7280', display: 'block', marginBottom: 4 }}>Nome</label>
                 <input
+                  autoFocus
                   value={novoNome}
                   onChange={e => setNovoNome(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && adicionarNo()}
-                  placeholder="Ex: Consumo, c0, Produto..."
-                  className="w-full border border-oikos-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-oikos-blue"
+                  onKeyDown={e => { if (e.key === 'Enter') adicionarNo() }}
+                  placeholder="Ex: c0, Consumo..."
+                  style={{ width: '100%', border: '1.5px solid #E5E7EB', borderRadius: 10, padding: '8px 12px', fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
                 />
               </div>
 
               {novoTipo === 'parametro' && (
                 <div>
-                  <label className="text-xs font-medium text-oikos-muted block mb-1">Valor</label>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: '#6B7280', display: 'block', marginBottom: 4 }}>Valor</label>
                   <input
                     type="number"
                     value={novoValor}
                     onChange={e => setNovoValor(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && adicionarNo()}
+                    onKeyDown={e => { if (e.key === 'Enter') adicionarNo() }}
                     placeholder="Ex: 100"
-                    className="w-full border border-oikos-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-oikos-blue"
+                    style={{ width: '100%', border: '1.5px solid #E5E7EB', borderRadius: 10, padding: '8px 12px', fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
                   />
                 </div>
               )}
 
               {(novoTipo === 'equacao' || novoTipo === 'resultado') && (
                 <div>
-                  <label className="text-xs font-medium text-oikos-muted block mb-1">Variavel</label>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: '#6B7280', display: 'block', marginBottom: 4 }}>Variavel</label>
                   <input
                     value={novaVar}
                     onChange={e => setNovaVar(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && adicionarNo()}
+                    onKeyDown={e => { if (e.key === 'Enter') adicionarNo() }}
                     placeholder="Ex: C, Y, I..."
-                    className="w-full border border-oikos-border rounded-xl px-3 py-2 text-sm font-mono focus:outline-none focus:border-oikos-blue"
+                    style={{ width: '100%', border: '1.5px solid #E5E7EB', borderRadius: 10, padding: '8px 12px', fontSize: 13, fontFamily: 'monospace', outline: 'none', boxSizing: 'border-box' }}
                   />
                 </div>
               )}
 
               {novoTipo === 'equacao' && (
                 <div>
-                  <label className="text-xs font-medium text-oikos-muted block mb-1">Expressao</label>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: '#6B7280', display: 'block', marginBottom: 4 }}>Expressao</label>
                   <input
                     value={novaExpr}
                     onChange={e => setNovaExpr(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && adicionarNo()}
+                    onKeyDown={e => { if (e.key === 'Enter') adicionarNo() }}
                     placeholder="Ex: c0 + c1*(Y-T)"
-                    className="w-full border border-oikos-border rounded-xl px-3 py-2 text-sm font-mono focus:outline-none focus:border-oikos-blue"
+                    style={{ width: '100%', border: '1.5px solid #E5E7EB', borderRadius: 10, padding: '8px 12px', fontSize: 13, fontFamily: 'monospace', outline: 'none', boxSizing: 'border-box' }}
                   />
                 </div>
               )}
             </div>
 
-            <div className="flex gap-2 mt-5">
+            {/* Botões */}
+            <div style={{ display: 'flex', gap: 8, marginTop: 20 }}>
               <button
                 type="button"
                 onClick={adicionarNo}
-                className="flex-1 bg-oikos-blue text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 transition-colors">
+                style={{ flex: 1, background: '#0066CC', color: '#fff', border: 'none', borderRadius: 12, padding: '10px 0', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
                 Adicionar
               </button>
               <button
                 type="button"
                 onClick={() => setPainelAberto(null)}
-                className="flex-1 bg-oikos-surface border border-oikos-border text-oikos-text py-2.5 rounded-xl text-sm font-medium hover:bg-gray-100 transition-colors">
+                style={{ flex: 1, background: '#F5F5F7', color: '#374151', border: '1.5px solid #E5E7EB', borderRadius: 12, padding: '10px 0', fontSize: 14, fontWeight: 500, cursor: 'pointer' }}>
                 Cancelar
               </button>
             </div>
           </div>
         </div>
       )}
+    </div>
+  )
+}
 
+// ── Página principal ──────────────────────────────────────────────
+
+export default function EditorVisualPage() {
+  const params   = useParams()
+  const router   = useRouter()
+  const supabase = createClient()
+
+  const [projeto,    setProjeto]    = useState<any>(null)
+  const [salvando,   setSalvando]   = useState(false)
+  const [calculando, setCalculando] = useState(false)
+
+  useEffect(() => {
+    async function carregar() {
+      const { data } = await supabase.from('projetos').select('*').eq('id', params.id).single()
+      if (!data) { router.push('/projetos'); return }
+      setProjeto(data)
+    }
+    carregar()
+  }, [params.id])
+
+  async function salvar(nodes: Node[], edges: Edge[]) {
+    if (!projeto) return
+    setSalvando(true)
+    await supabase.from('projetos').update({
+      configuracao: { ...projeto.configuracao, visual_nodes: nodes, visual_edges: edges },
+      updated_at: new Date().toISOString(),
+    }).eq('id', projeto.id)
+    setSalvando(false)
+  }
+
+  async function calcular() {
+    // implementação futura via useReactFlow
+    setCalculando(true)
+    setTimeout(() => setCalculando(false), 1000)
+  }
+
+  return (
+    <main className="h-screen overflow-hidden">
+      <ReactFlowProvider>
+        <FlowEditor
+          projeto={projeto}
+          onSalvar={salvar}
+          salvando={salvando}
+          calculando={calculando}
+          onCalcular={calcular}
+        />
+      </ReactFlowProvider>
     </main>
   )
 }
