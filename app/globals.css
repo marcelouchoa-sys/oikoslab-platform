@@ -1,7 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
 @theme {
+  --font-sans: 'Montserrat', -apple-system, sans-serif;
+
   --color-oikos-blue:    #0066CC;
   --color-oikos-purple:  #6E3B9E;
   --color-oikos-green:   #1D7A4F;
@@ -13,11 +15,5 @@
   --color-oikos-muted:   #6E6E73;
 }
 
-* {
-  font-family: 'DM Sans', -apple-system, sans-serif;
-}
-
-body {
-  background: #FFFFFF;
-  color: #1D1D1F;
-}
+* { font-family: 'Montserrat', -apple-system, sans-serif; }
+body { background: #0b0f19; color: #ffffff; }
