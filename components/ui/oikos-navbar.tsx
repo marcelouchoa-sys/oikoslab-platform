@@ -1,31 +1,121 @@
-"use client"
+'use client'
 
-import Link from "next/link"
-import Image from "next/image"
+import React from 'react'
+import Link from 'next/link'
+import NextImage from 'next/image'
+import { Menu, X } from 'lucide-react'
 
 export function OikosNavbar() {
+  const [open, setOpen] = React.useState(false)
+
+  const links = [
+    { label: 'Home', href: '/home' },
+    { label: 'Sobre', href: '/sobre' },
+    { label: 'Contato', href: '/contato' },
+    { label: 'Dashboard', href: '/dashboard' },
+  ]
+
+  React.useEffect(() => {
+    document.body.style.overflow = open ? 'hidden' : ''
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [open])
+
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b">
-      <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-        <Link href="/home" className="flex items-center gap-2">
-          <Image
+    <header className="sticky top-0 z-50 w-full backdrop-blur-xl bg-white/10 border-b border-white/10">
+      <nav className="max-w-7xl mx-auto h-16 px-6 flex items-center justify-between">
+
+        {/* LOGO */}
+        <Link href="/home" className="flex items-center gap-3">
+          <NextImage
             src="/logo-oikoslab.png"
             alt="OikosLab"
-            width={32}
-            height={32}
+            width={36}
+            height={36}
+            className="object-contain"
           />
-          <span className="font-bold text-lg">
+          <span className="text-white font-bold text-xl">
             OikosLab
           </span>
         </Link>
 
-        <nav className="flex items-center gap-6">
-          <Link href="/home">Home</Link>
-          <Link href="/sobre">Sobre</Link>
-          <Link href="/contato">Contato</Link>
-          <Link href="/login">Entrar</Link>
-        </nav>
-      </div>
+        {/* DESKTOP */}
+        <div className="hidden md:flex items-center gap-2">
+          {links.map((link) => (
+            <Link
+              key={link.label}
+              href={link.href}
+              className="px-4 py-2 rounded-lg text-gray-300 hover:text-white hover:bg-white/10 transition"
+            >
+              {link.label}
+            </Link>
+          ))}
+
+          <Link
+            href="/login"
+            className="ml-4 px-4 py-2 rounded-lg border border-white/20 text-white hover:bg-white/10 transition"
+          >
+            Entrar
+          </Link>
+
+          <Link
+            href="/login"
+            className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition"
+          >
+            Criar Conta
+          </Link>
+        </div>
+
+        {/* MOBILE BUTTON */}
+        <button
+          onClick={() => setOpen(!open)}
+          className="md:hidden text-white"
+        >
+          {open ? <X size={24} /> : <Menu size={24} />}
+        </button>
+
+      </nav>
+
+      {/* MOBILE MENU */}
+      {open && (
+        <div className="md:hidden bg-slate-950 border-t border-white/10">
+
+          <div className="flex flex-col p-6 gap-4">
+
+            {links.map((link) => (
+              <Link
+                key={link.label}
+                href={link.href}
+                onClick={() => setOpen(false)}
+                className="text-gray-300 hover:text-white"
+              >
+                {link.label}
+              </Link>
+            ))}
+
+            <div className="border-t border-white/10 pt-4 flex flex-col gap-2">
+
+              <Link
+                href="/login"
+                className="w-full text-center px-4 py-3 rounded-lg border border-white/20 text-white"
+              >
+                Entrar
+              </Link>
+
+              <Link
+                href="/login"
+                className="w-full text-center px-4 py-3 rounded-lg bg-blue-600 text-white"
+              >
+                Criar Conta
+              </Link>
+
+            </div>
+
+          </div>
+
+        </div>
+      )}
     </header>
   )
 }
