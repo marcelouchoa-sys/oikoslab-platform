@@ -5,86 +5,168 @@ export default function HomePage() {
   const LAB_URL = process.env.NEXT_PUBLIC_LAB_URL || '#'
 
   return (
-    <main className="min-h-screen bg-white">
+    <main className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 overflow-hidden relative">
 
       <OikosNavbar />
 
-      {/* HERO */}
-      <section className="pt-40 pb-24 px-12 text-center bg-gradient-to-b from-oikos-surface to-white">
-        <h1 className="text-6xl font-bold text-oikos-text tracking-tight leading-tight mb-6 max-w-4xl mx-auto">
-          Explore, simule e analise{' '}
-          <span className="bg-gradient-to-r from-oikos-blue to-oikos-purple bg-clip-text text-transparent">
-            economias completas
-          </span>
-        </h1>
-        <p className="text-lg text-oikos-muted max-w-xl mx-auto mb-10 leading-relaxed">
-          OikosLab é uma plataforma de simulação macroeconômica desenvolvida na UFRRJ.
-          Do laboratório didático à plataforma profissional.
-        </p>
-        <div className="flex gap-4 justify-center">
-          <Link href="/login" className="bg-oikos-blue text-white px-7 py-3.5 rounded-xl text-base font-semibold hover:bg-blue-700 transition-all hover:-translate-y-0.5">
-            Criar conta gratis
-          </Link>
-          <a href={LAB_URL} target="_blank" rel="noopener noreferrer"
-            className="bg-oikos-surface text-oikos-text px-7 py-3.5 rounded-xl text-base font-medium border border-oikos-border hover:bg-gray-100 transition-all hover:-translate-y-0.5">
-            Laboratorio Didatico
-          </a>
-        </div>
-      </section>
+      {/* Glow Background */}
+      <div className="absolute top-0 left-0 w-96 h-96 bg-blue-600/20 blur-[120px]" />
+      <div className="absolute bottom-0 right-0 w-96 h-96 bg-cyan-500/20 blur-[120px]" />
 
-      {/* DUAS CAMADAS */}
-      <section className="py-20 px-12 max-w-6xl mx-auto">
-        <p className="text-xs font-semibold tracking-widest uppercase text-oikos-muted mb-3 text-center">Como funciona</p>
-        <h2 className="text-4xl font-bold text-oikos-text tracking-tight mb-16 text-center">Duas camadas, um ecossistema</h2>
-        <div className="grid grid-cols-2 gap-8">
-          <div className="bg-oikos-surface border border-oikos-border border-t-4 border-t-oikos-green rounded-2xl p-8">
-            <p className="text-xs font-semibold uppercase tracking-widest text-oikos-green mb-3">Camada 1</p>
-            <h3 className="text-2xl font-bold text-oikos-text mb-4">Laboratorio Didatico</h3>
-            <p className="text-oikos-muted leading-relaxed mb-6">
-              Ambiente de aprendizado livre. Sem conta, sem cadastro.
-              Explore funções econômicas, escolas de pensamento e IS-LM-BP.
-            </p>
-            <ul className="space-y-2 mb-8">
-              {['Funcoes Economicas', 'Escolas de Pensamento', 'IS-LM-BP', 'Sem necessidade de conta'].map(i => (
-                <li key={i} className="flex items-center gap-2 text-sm text-oikos-text">
-                  <span className="w-1.5 h-1.5 rounded-full bg-oikos-green flex-shrink-0" />
-                  {i}
-                </li>
-              ))}
-            </ul>
-            <a href={LAB_URL} target="_blank" rel="noopener noreferrer"
-              className="inline-block bg-oikos-green text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity">
-              Acessar Laboratorio
+      {/* HERO */}
+      <section className="pt-40 pb-32 px-6 text-center relative z-10">
+        <div className="max-w-6xl mx-auto">
+
+          <div className="inline-flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-4 py-2 mb-8">
+            <span className="w-2 h-2 rounded-full bg-green-400" />
+            <span className="text-sm text-gray-300">
+              Plataforma Econômica da UFRRJ
+            </span>
+          </div>
+
+          <h1 className="text-6xl md:text-7xl font-bold text-white tracking-tight leading-tight mb-8">
+            Explore, simule e analise
+            <span className="block bg-gradient-to-r from-blue-400 via-cyan-400 to-purple-400 bg-clip-text text-transparent">
+              economias completas
+            </span>
+          </h1>
+
+          <p className="text-xl text-gray-400 max-w-3xl mx-auto mb-12 leading-relaxed">
+            OikosLab é uma plataforma de simulação macroeconômica desenvolvida
+            na UFRRJ. Conectando ensino, pesquisa e análise econômica em um
+            ambiente moderno e intuitivo.
+          </p>
+
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link
+              href="/login"
+              className="bg-white/10 hover:bg-white/20 text-white px-8 py-4 rounded-full font-semibold transition-all"
+            >
+              Criar Conta
+            </Link>
+
+            <a
+              href={LAB_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-white/5 border border-white/10 hover:bg-white/10 text-white px-8 py-4 rounded-full font-medium transition-all"
+            >
+              Laboratório Didático
             </a>
           </div>
 
-          <div className="bg-oikos-surface border border-oikos-border border-t-4 border-t-oikos-blue rounded-2xl p-8">
-            <p className="text-xs font-semibold uppercase tracking-widest text-oikos-blue mb-3">Camada 2</p>
-            <h3 className="text-2xl font-bold text-oikos-text mb-4">Plataforma Economica</h3>
-            <p className="text-oikos-muted leading-relaxed mb-6">
-              Ambiente profissional e persistente. Crie sua conta, salve projetos,
-              construa modelos do zero e colabore com outros usuários.
-            </p>
-            <ul className="space-y-2 mb-8">
-              {['Dashboard pessoal', 'Projetos salvos', 'Construtor de modelos', 'Compartilhamento', 'Historico de analises', 'Economia Real'].map(i => (
-                <li key={i} className="flex items-center gap-2 text-sm text-oikos-text">
-                  <span className="w-1.5 h-1.5 rounded-full bg-oikos-blue flex-shrink-0" />
-                  {i}
-                </li>
-              ))}
-            </ul>
-            <Link href="/login"
-              className="inline-block bg-oikos-blue text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 transition-colors">
-              Acessar Plataforma
-            </Link>
+        </div>
+      </section>
+
+      {/* CAMADAS */}
+      <section className="relative z-10 py-24 px-6">
+        <div className="max-w-6xl mx-auto">
+
+          <p className="text-center text-sm uppercase tracking-widest text-gray-500 mb-3">
+            Como funciona
+          </p>
+
+          <h2 className="text-center text-4xl font-bold text-white mb-16">
+            Duas camadas, um ecossistema
+          </h2>
+
+          <div className="grid lg:grid-cols-2 gap-8">
+
+            {/* Laboratório */}
+            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8">
+
+              <div className="w-12 h-12 rounded-2xl bg-green-500/20 flex items-center justify-center mb-6">
+                <div className="w-3 h-3 rounded-full bg-green-400" />
+              </div>
+
+              <p className="text-green-400 text-sm font-semibold uppercase mb-3">
+                Camada 1
+              </p>
+
+              <h3 className="text-3xl font-bold text-white mb-4">
+                Laboratório Didático
+              </h3>
+
+              <p className="text-gray-400 leading-relaxed mb-6">
+                Ambiente de aprendizado livre. Explore funções econômicas,
+                escolas de pensamento, IS-LM-BP e conceitos macroeconômicos
+                sem necessidade de cadastro.
+              </p>
+
+              <ul className="space-y-3 text-gray-300 mb-8">
+                <li>✓ Funções Econômicas</li>
+                <li>✓ Escolas de Pensamento</li>
+                <li>✓ IS-LM-BP</li>
+                <li>✓ Sem necessidade de conta</li>
+              </ul>
+
+              <a
+                href={LAB_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block px-6 py-3 rounded-full bg-green-500/20 hover:bg-green-500/30 text-green-300 transition-all"
+              >
+                Acessar Laboratório
+              </a>
+
+            </div>
+
+            {/* Plataforma */}
+            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8">
+
+              <div className="w-12 h-12 rounded-2xl bg-blue-500/20 flex items-center justify-center mb-6">
+                <div className="w-3 h-3 rounded-full bg-blue-400" />
+              </div>
+
+              <p className="text-blue-400 text-sm font-semibold uppercase mb-3">
+                Camada 2
+              </p>
+
+              <h3 className="text-3xl font-bold text-white mb-4">
+                Plataforma Econômica
+              </h3>
+
+              <p className="text-gray-400 leading-relaxed mb-6">
+                Crie projetos, salve análises, desenvolva modelos econômicos
+                personalizados e compartilhe pesquisas com outros usuários.
+              </p>
+
+              <ul className="space-y-3 text-gray-300 mb-8">
+                <li>✓ Dashboard Pessoal</li>
+                <li>✓ Projetos Salvos</li>
+                <li>✓ Construtor de Modelos</li>
+                <li>✓ Compartilhamento</li>
+                <li>✓ Histórico de Análises</li>
+                <li>✓ Economia Real</li>
+              </ul>
+
+              <Link
+                href="/login"
+                className="inline-block px-6 py-3 rounded-full bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 transition-all"
+              >
+                Acessar Plataforma
+              </Link>
+
+            </div>
+
           </div>
+
         </div>
       </section>
 
       {/* FOOTER */}
-      <footer className="bg-oikos-surface border-t border-oikos-border py-8 text-center">
-        <p className="text-sm font-bold text-oikos-text mb-1">OikosLab</p>
-        <p className="text-xs text-oikos-muted">Marcelo de Salles Cunha Uchoa · UFRRJ · 2026</p>
+      <footer className="border-t border-white/10 py-10 relative z-10">
+        <div className="max-w-6xl mx-auto text-center">
+
+          <p className="text-xl font-bold text-white mb-2">
+            OikosLab
+          </p>
+
+          <p className="text-gray-500">
+            Marcelo de Salles Cunha Uchôa • UFRRJ • 2026
+          </p>
+
+        </div>
       </footer>
 
     </main>
