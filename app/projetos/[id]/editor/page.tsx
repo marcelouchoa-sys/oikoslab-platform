@@ -7,6 +7,8 @@ import { useRouter, useParams } from 'next/navigation'
 import { api } from '@/lib/api'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
+import 'katex/dist/katex.min.css'
+import { BlockMath } from 'react-katex'
 
 const Plot = dynamic(() => import('react-plotly.js'), { ssr: false })
 
@@ -286,9 +288,14 @@ export default function EditorPage() {
                   {Object.keys(resultado.latex).length > 0 && (
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-widest text-oikos-muted mb-3">Equacoes</p>
-                      <div className="bg-oikos-surface border border-oikos-border rounded-xl p-4 space-y-2">
+                      <div className="bg-oikos-surface border border-oikos-border rounded-xl p-6 space-y-4">
                         {Object.entries(resultado.latex).map(([k, v]) => (
-                          <p key={k} className="text-sm font-mono text-oikos-text">{v}</p>
+                          <div key={k} className="flex items-center gap-4">
+                            <span className="text-xs font-mono text-oikos-muted w-6">{k}</span>
+                            <div className="flex-1">
+                              <BlockMath math={v.replace(`${k} = `, '')} errorColor="#C0392B" />
+                            </div>
+                          </div>
                         ))}
                       </div>
                     </div>
