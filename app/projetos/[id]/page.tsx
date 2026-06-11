@@ -246,6 +246,12 @@ export default function ProjetoPage() {
                   className="bg-oikos-surface border border-oikos-border text-oikos-text px-6 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-100 transition-colors">
                   Laboratorio Didatico
                 </a>
+                {projeto.tipo === 'economia_real' && (
+                  <Link href={`/projetos/${projeto.id}/economia-real`}
+                    className="bg-oikos-slate text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:opacity-90 transition-colors inline-block">
+                    Abrir Economia Real
+                  </Link>
+                )}
               </div>
             </div>
           </div>
