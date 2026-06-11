@@ -39,6 +39,14 @@ const TIPOS = [
     tag: 'Avancado',
     tagCor: 'bg-gray-100 text-oikos-slate',
   },
+  {
+    id: 'economia_real',
+    titulo: 'Economia Real',
+    desc: 'Simule economias reais com dados historicos do Banco Central, IBGE e World Bank. Escolha um pais e periodo.',
+    cor: 'border-t-oikos-slate',
+    tag: 'Dados Reais',
+    tagCor: 'bg-slate-50 text-oikos-slate',
+  },
 ]
 
 export default function NovoProjeto() {

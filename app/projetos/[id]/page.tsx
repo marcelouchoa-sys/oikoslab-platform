@@ -12,6 +12,7 @@ const TIPO_LABEL: Record<string, string> = {
   oa_da:  'OA-DA',
   funcao: 'Funcoes Economicas',
   custom: 'Modelo Proprio',
+  economia_real: 'Economia Real',
 }
 
 export default function ProjetoPage() {

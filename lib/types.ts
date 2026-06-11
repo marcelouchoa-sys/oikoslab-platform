@@ -3,7 +3,7 @@ export type Projeto = {
   user_id: string
   titulo: string
   descricao: string | null
-  tipo: 'islmbp' | 'oa_da' | 'funcao' | 'custom'
+  tipo: 'islmbp' | 'oa_da' | 'funcao' | 'custom' | 'economia_real'
   configuracao: Record<string, any>
   publico: boolean
   created_at: string
