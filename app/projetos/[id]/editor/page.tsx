@@ -52,6 +52,11 @@ export default function EditorPage() {
   const [notas,    setNotas]    = useState<NotaBloco[]>([{ id: uid(), conteudo: '' }])
   const [tituloModelo, setTituloModelo] = useState('Meu Modelo')
   const [validacoes, setValidacoes] = useState<Record<string, boolean | null>>({})
+  const [cenario2, setCenario2] = useState<{
+    parametros: Parametro[]
+    resultado: Resultado | null
+    ativo: boolean
+  }>({ parametros: [], resultado: null, ativo: false })
 
   // Carregar projeto
   useEffect(() => {
@@ -75,13 +80,18 @@ export default function EditorPage() {
   async function calcular() {
     setCalculando(true)
     setResultado(null)
+    const payload = (params_: Parametro[]) => ({
+      parametros:     params_.map(p => ({ nome: p.nome, valor: p.valor, descricao: p.descricao })),
+      equacoes:       equacoes.map(e => ({ nome: e.nome, variavel: e.variavel, expressao: e.expressao })),
+      variavel_livre: varLivre.ativo ? { nome: varLivre.nome, min: varLivre.min, max: varLivre.max, pontos: 200 } : null,
+    })
     try {
-      const res = await api.modelo.resolver({
-        parametros: parametros.map(p => ({ nome: p.nome, valor: p.valor, descricao: p.descricao })),
-        equacoes:   equacoes.map(e => ({ nome: e.nome, variavel: e.variavel, expressao: e.expressao })),
-        variavel_livre: varLivre.ativo ? { nome: varLivre.nome, min: varLivre.min, max: varLivre.max, pontos: 200 } : null,
-      })
+      const res = await api.modelo.resolver(payload(parametros))
       setResultado(res)
+      if (cenario2.ativo && cenario2.parametros.length > 0) {
+        const res2 = await api.modelo.resolver(payload(cenario2.parametros))
+        setCenario2(c => ({ ...c, resultado: res2 }))
+      }
     } catch (e: any) {
       setResultado({ valores: {}, series: null, erros: [e.message], latex: {} })
     }
@@ -154,6 +164,18 @@ export default function EditorPage() {
               </button>
             ))}
           </div>
+          <button onClick={() => setCenario2(c => ({
+              ...c,
+              ativo: !c.ativo,
+              parametros: c.ativo ? [] : parametros.map(p => ({ ...p, id: uid() }))
+            }))}
+            className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
+              cenario2.ativo
+                ? 'bg-oikos-purple text-white border-oikos-purple'
+                : 'bg-oikos-surface text-oikos-muted border-oikos-border hover:border-oikos-purple hover:text-oikos-purple'
+            }`}>
+            {cenario2.ativo ? 'Comparando' : 'Comparar cenarios'}
+          </button>
           <button onClick={salvar} disabled={salvando}
             className="bg-oikos-surface border border-oikos-border text-oikos-text px-4 py-1.5 rounded-lg text-xs font-medium hover:bg-gray-100 transition-colors disabled:opacity-50">
             {salvando ? 'Salvando...' : 'Salvar'}
@@ -288,24 +310,83 @@ export default function EditorPage() {
                   )}
 
                   {/* Valores */}
-                  {Object.keys(resultado.valores).length > 0 && (
+                  {cenario2.ativo ? (
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-widest text-oikos-muted mb-3">Resultado</p>
-                      <div className="grid grid-cols-4 gap-3">
-                        {Object.entries(resultado.valores).map(([k, v]) => (
-                          <div key={k} className="bg-oikos-surface border border-oikos-border rounded-xl p-4">
-                            <p className="text-xs font-mono font-medium text-oikos-muted mb-1">{k}</p>
-                            <p className="text-xl font-bold text-oikos-text tracking-tight">
-                              {typeof v === 'number' ? v.toFixed(2) : v}
-                            </p>
+                      <p className="text-xs font-semibold uppercase tracking-widest text-oikos-muted mb-3">Comparacao de Cenarios</p>
+                      <div className="grid grid-cols-2 gap-4">
+                        {/* Cenario 1 */}
+                        <div className="border-2 border-oikos-blue rounded-2xl p-4">
+                          <p className="text-xs font-semibold text-oikos-blue mb-3">Cenario Base</p>
+                          <div className="grid grid-cols-2 gap-2">
+                            {Object.entries(resultado.valores).map(([k, v]) => (
+                              <div key={k} className="bg-oikos-surface border border-oikos-border rounded-xl p-3">
+                                <p className="text-xs font-mono font-medium text-oikos-muted mb-1">{k}</p>
+                                <p className="text-lg font-bold text-oikos-text">{typeof v === 'number' ? v.toFixed(2) : v}</p>
+                              </div>
+                            ))}
                           </div>
-                        ))}
+                        </div>
+                        {/* Cenario 2 */}
+                        <div className="border-2 border-oikos-purple rounded-2xl p-4">
+                          <p className="text-xs font-semibold text-oikos-purple mb-3">Cenario Alternativo</p>
+                          <div className="space-y-1.5 mb-4">
+                            {cenario2.parametros.map((p, i) => (
+                              <div key={p.id} className="flex items-center gap-2">
+                                <span className="text-xs font-mono text-oikos-muted w-10">{p.nome}</span>
+                                <span className="text-xs text-oikos-muted">=</span>
+                                <input type="number" value={p.valor} onChange={e => {
+                                  const novo = [...cenario2.parametros]
+                                  novo[i].valor = parseFloat(e.target.value) || 0
+                                  setCenario2(c => ({ ...c, parametros: novo }))
+                                }}
+                                className="flex-1 border border-oikos-border rounded-md px-2 py-1 text-xs focus:outline-none focus:border-purple-400" />
+                              </div>
+                            ))}
+                          </div>
+                          {cenario2.resultado && Object.keys(cenario2.resultado.valores).length > 0 ? (
+                            <div className="grid grid-cols-2 gap-2">
+                              {Object.entries(cenario2.resultado.valores).map(([k, v]) => {
+                                const v1 = resultado.valores[k]
+                                const delta = typeof v === 'number' && typeof v1 === 'number' ? v - v1 : null
+                                return (
+                                  <div key={k} className="bg-oikos-surface border border-oikos-border rounded-xl p-3">
+                                    <p className="text-xs font-mono font-medium text-oikos-muted mb-1">{k}</p>
+                                    <p className="text-lg font-bold text-oikos-text">{typeof v === 'number' ? v.toFixed(2) : v}</p>
+                                    {delta !== null && (
+                                      <p className={`text-xs font-mono mt-0.5 ${delta > 0 ? 'text-green-600' : delta < 0 ? 'text-red-500' : 'text-oikos-muted'}`}>
+                                        {delta > 0 ? '+' : ''}{delta.toFixed(2)}
+                                      </p>
+                                    )}
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          ) : (
+                            <p className="text-xs text-oikos-muted">Clique em Calcular para ver o cenario alternativo.</p>
+                          )}
+                        </div>
                       </div>
                     </div>
+                  ) : (
+                    Object.keys(resultado.valores).length > 0 && (
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-widest text-oikos-muted mb-3">Resultado</p>
+                        <div className="grid grid-cols-4 gap-3">
+                          {Object.entries(resultado.valores).map(([k, v]) => (
+                            <div key={k} className="bg-oikos-surface border border-oikos-border rounded-xl p-4">
+                              <p className="text-xs font-mono font-medium text-oikos-muted mb-1">{k}</p>
+                              <p className="text-xl font-bold text-oikos-text tracking-tight">
+                                {typeof v === 'number' ? v.toFixed(2) : v}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )
                   )}
 
                   {/* LaTeX */}
-                  {Object.keys(resultado.latex).length > 0 && (
+                  {!cenario2.ativo && Object.keys(resultado.latex).length > 0 && (
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-widest text-oikos-muted mb-3">Equacoes</p>
                       <div className="bg-oikos-surface border border-oikos-border rounded-xl p-6 space-y-4">
@@ -322,7 +403,7 @@ export default function EditorPage() {
                   )}
 
                   {/* Gráfico */}
-                  {resultado.series && Object.keys(resultado.series).length > 1 && (
+                  {!cenario2.ativo && resultado.series && Object.keys(resultado.series).length > 1 && (
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-widest text-oikos-muted mb-3">Grafico</p>
                       <div className="bg-white border border-oikos-border rounded-2xl p-4">
