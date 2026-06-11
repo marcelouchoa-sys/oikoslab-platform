@@ -236,7 +236,9 @@ export default function ProjetoPage() {
                 O editor de simulacoes e analises deste projeto sera construido aqui.
               </p>
               <div className="inline-flex gap-3">
-                <button className="bg-oikos-blue text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 transition-colors">
+                <button
+                  onClick={() => router.push(`/projetos/${projeto.id}/editor`)}
+                  className="bg-oikos-blue text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 transition-colors">
                   Abrir editor
                 </button>
                 <a href={process.env.NEXT_PUBLIC_LAB_URL || '#'} target="_blank" rel="noopener noreferrer"
