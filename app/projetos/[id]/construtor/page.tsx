@@ -211,6 +211,33 @@ export default function ConstrutorPage() {
                   </div>
                 )}
               </div>
+
+              {/* CONFIGURAÇÕES DO PROJETO */}
+              <div className="p-4 border-t border-white/10 mt-auto">
+                <p className="text-xs font-semibold uppercase tracking-widest text-gray-600 mb-3">Projeto</p>
+                <div className="space-y-1">
+                  <button onClick={() => {
+                    const novo = prompt('Novo nome do projeto:', tituloModelo)
+                    if (novo && novo.trim()) {
+                      setTituloModelo(novo.trim())
+                      supabase.from('projetos').update({ titulo: novo.trim() }).eq('id', params.id as string)
+                    }
+                  }} className="w-full text-left px-3 py-2 rounded-lg text-xs text-gray-400 hover:text-white hover:bg-white/10 transition">
+                    Renomear projeto
+                  </button>
+                  <Link href="/projetos"
+                    className="w-full text-left px-3 py-2 rounded-lg text-xs text-gray-400 hover:text-white hover:bg-white/10 transition block">
+                    Meus projetos
+                  </Link>
+                  <button onClick={async () => {
+                    if (!confirm('Tem certeza que deseja excluir este projeto?')) return
+                    await supabase.from('projetos').delete().eq('id', params.id as string)
+                    window.location.href = '/projetos'
+                  }} className="w-full text-left px-3 py-2 rounded-lg text-xs text-red-500 hover:bg-red-500/10 transition">
+                    Excluir projeto
+                  </button>
+                </div>
+              </div>
             </div>
 
             {/* PAINEL DIREITO — EQUAÇÕES */}

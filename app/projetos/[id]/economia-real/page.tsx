@@ -85,11 +85,34 @@ export default function EconomiaRealPage() {
       {/* HEADER */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-oikos-border px-6 h-14 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Link href={`/projetos/${params.id}`} className="text-sm text-oikos-muted hover:text-oikos-blue transition-colors">
+          <Link href="/projetos" className="text-sm text-oikos-muted hover:text-oikos-blue transition-colors">
             ← Voltar
           </Link>
           <span className="text-oikos-border">|</span>
           <span className="text-sm font-semibold text-oikos-text">{projeto?.titulo} — Economia Real</span>
+          <div className="relative group">
+            <button className="text-gray-500 hover:text-white px-2 py-1 rounded-lg hover:bg-white/10 transition text-xs">
+              ⋯
+            </button>
+            <div className="absolute top-8 left-0 bg-[#1a1f2e] border border-white/10 rounded-xl p-1 hidden group-hover:block w-44 z-50">
+              <button onClick={() => {
+                const novo = prompt('Novo nome:', projeto?.titulo)
+                if (novo?.trim()) supabase.from('projetos').update({ titulo: novo.trim() }).eq('id', params.id as string)
+              }} className="w-full text-left px-3 py-2 rounded-lg text-xs text-gray-400 hover:text-white hover:bg-white/10 transition block">
+                Renomear
+              </button>
+              <Link href="/projetos" className="w-full text-left px-3 py-2 rounded-lg text-xs text-gray-400 hover:text-white hover:bg-white/10 transition block">
+                Meus projetos
+              </Link>
+              <button onClick={async () => {
+                if (!confirm('Excluir projeto?')) return
+                await supabase.from('projetos').delete().eq('id', params.id as string)
+                window.location.href = '/projetos'
+              }} className="w-full text-left px-3 py-2 rounded-lg text-xs text-red-500 hover:bg-red-500/10 transition block">
+                Excluir
+              </button>
+            </div>
+          </div>
         </div>
       </header>
 
