@@ -1,0 +1,549 @@
+'use client'
+
+import { useEffect, useState, useRef } from 'react'
+import { createClient } from '@/lib/supabase'
+import { useRouter, useParams } from 'next/navigation'
+import Link from 'next/link'
+import { api } from '@/lib/api'
+import dynamic from 'next/dynamic'
+import { RichEditor } from '@/components/ui/rich-editor'
+
+const Plot = dynamic(() => import('react-plotly.js'), { ssr: false })
+
+type Parametro = { id: string; nome: string; valor: number; descricao: string }
+type Equacao   = { id: string; numero: number; nome: string; variavel: string; expressao: string; descricao: string; valida: boolean | null }
+type Secao     = { id: string; titulo: string; conteudo: string }
+type Referencia = { id: string; autor: string; ano: string; titulo: string; publicacao: string }
+
+function uid() { return Math.random().toString(36).slice(2) }
+
+const SIMBOLOS = ['α','β','γ','δ','ε','λ','μ','π','σ','τ','φ','ω','Δ','∑','∫','∂','∞','≈','≤','≥','→','↑','↓','Ŷ','Ȳ']
+
+export default function ConstrutorPage() {
+  const params   = useParams()
+  const router   = useRouter()
+  const supabase = createClient()
+
+  const [projeto,    setProjeto]    = useState<any>(null)
+  const [loading,    setLoading]    = useState(true)
+  const [salvando,   setSalvando]   = useState(false)
+  const [calculando, setCalculando] = useState(false)
+  const [resultado,  setResultado]  = useState<any>(null)
+  const [aba,        setAba]        = useState<'modelo' | 'notas' | 'analise' | 'exportar'>('modelo')
+  const [inputFocus, setInputFocus] = useState<string | null>(null)
+
+  // Estado do modelo
+  const [tituloModelo, setTituloModelo] = useState('')
+  const [parametros,   setParametros]   = useState<Parametro[]>([
+    { id: uid(), nome: 'c', valor: 0.75, descricao: 'Propensão a consumir' },
+    { id: uid(), nome: 'h', valor: 0.10, descricao: 'Propensão a investir' },
+    { id: uid(), nome: 'm', valor: 0.20, descricao: 'Propensão a importar' },
+    { id: uid(), nome: 't', valor: 0.25, descricao: 'Alíquota de imposto' },
+  ])
+  const [equacoes,    setEquacoes]    = useState<Equacao[]>([
+    { id: uid(), numero: 1, nome: 'Supermultiplicador', variavel: 'Y', expressao: '(1/(1-(1-m)*(c*(1-t)+h)))*Z', descricao: 'Produto determinado pelos gastos autônomos', valida: null },
+  ])
+  const [varLivre,   setVarLivre]    = useState({ nome: 'Z', min: 0, max: 2000, ativo: false })
+
+  // Estado das notas
+  const [secoes,      setSecoes]      = useState<Secao[]>([
+    { id: uid(), titulo: 'Introdução', conteudo: '' },
+    { id: uid(), titulo: 'Modelo Teórico', conteudo: '' },
+    { id: uid(), titulo: 'Resultados', conteudo: '' },
+  ])
+  const [referencias, setReferencias] = useState<Referencia[]>([])
+
+  useEffect(() => {
+    async function carregar() {
+      const { data } = await supabase.from('projetos').select('*').eq('id', params.id).single()
+      if (!data) { router.push('/projetos'); return }
+      setProjeto(data)
+      setTituloModelo(data.titulo)
+      if (data.configuracao?.parametros) setParametros(data.configuracao.parametros)
+      if (data.configuracao?.equacoes)   setEquacoes(data.configuracao.equacoes)
+      if (data.configuracao?.varLivre)   setVarLivre(data.configuracao.varLivre)
+      if (data.configuracao?.secoes)     setSecoes(data.configuracao.secoes)
+      if (data.configuracao?.referencias) setReferencias(data.configuracao.referencias)
+      setLoading(false)
+    }
+    carregar()
+  }, [params.id])
+
+  function inserirSimbolo(simbolo: string) {
+    if (!inputFocus) return
+    const el = document.getElementById(inputFocus) as HTMLInputElement
+    if (!el) return
+    const start = el.selectionStart || 0
+    const end   = el.selectionEnd   || 0
+    const novo  = el.value.slice(0, start) + simbolo + el.value.slice(end)
+    el.value = novo
+    el.dispatchEvent(new Event('input', { bubbles: true }))
+    setTimeout(() => el.setSelectionRange(start + 1, start + 1), 0)
+  }
+
+  async function calcular() {
+    setCalculando(true)
+    setResultado(null)
+    try {
+      const res = await api.modelo.resolver({
+        parametros: parametros.map(p => ({ nome: p.nome, valor: p.valor, descricao: p.descricao })),
+        equacoes:   equacoes.map(e => ({ nome: e.nome, variavel: e.variavel, expressao: e.expressao })),
+        variavel_livre: varLivre.ativo ? { nome: varLivre.nome, min: varLivre.min, max: varLivre.max, pontos: 300 } : null,
+      })
+      setResultado(res)
+      setAba('analise')
+    } catch (e: any) {
+      setResultado({ valores: {}, series: null, erros: [e.message], latex: {} })
+      setAba('analise')
+    }
+    setCalculando(false)
+  }
+
+  async function salvar() {
+    if (!projeto) return
+    setSalvando(true)
+    await supabase.from('projetos').update({
+      configuracao: { parametros, equacoes, varLivre, secoes, referencias },
+      updated_at: new Date().toISOString(),
+    }).eq('id', projeto.id)
+    setSalvando(false)
+  }
+
+  async function exportarPDF() {
+    const { default: jsPDF } = await import('jspdf')
+    const { default: html2canvas } = await import('html2canvas')
+    const el = document.getElementById('exportar-conteudo')
+    if (!el) return
+    const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#0b0f19' })
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+    const w = pdf.internal.pageSize.getWidth()
+    const h = (canvas.height * w) / canvas.width
+    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, w, h)
+    pdf.save(`${tituloModelo.replace(/\s+/g, '_')}.pdf`)
+  }
+
+  if (loading) return (
+    <main className="min-h-screen bg-[#0b0f19] flex items-center justify-center">
+      <p className="text-gray-400 text-sm">Carregando construtor...</p>
+    </main>
+  )
+
+  return (
+    <main className="min-h-screen bg-[#0b0f19] text-white flex flex-col">
+
+      {/* HEADER */}
+      <header className="fixed top-0 left-0 right-0 z-50 bg-[#0b0f19]/90 backdrop-blur-xl border-b border-white/10 px-6 h-14 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Link href={`/projetos/${params.id}`} className="text-sm text-gray-400 hover:text-white transition">← Voltar</Link>
+          <span className="text-white/20">|</span>
+          <span className="text-sm font-semibold text-white">{tituloModelo}</span>
+          <span className="text-xs bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full">Construtor de Funções</span>
+        </div>
+        <div className="flex items-center gap-2">
+          {/* ABAS */}
+          <div className="flex gap-1 bg-white/5 rounded-lg p-1">
+            {[
+              { id: 'modelo',   label: 'Modelo' },
+              { id: 'notas',    label: 'Notas' },
+              { id: 'analise',  label: 'Análise' },
+              { id: 'exportar', label: 'Exportar' },
+            ].map(a => (
+              <button key={a.id} onClick={() => setAba(a.id as any)}
+                className={`px-4 py-1.5 text-xs font-medium rounded-md transition-colors ${aba === a.id ? 'bg-white/10 text-white' : 'text-gray-500 hover:text-gray-300'}`}>
+                {a.label}
+              </button>
+            ))}
+          </div>
+          <button onClick={salvar} disabled={salvando}
+            className="bg-white/5 border border-white/10 text-gray-300 px-4 py-1.5 rounded-lg text-xs font-medium hover:bg-white/10 transition disabled:opacity-50">
+            {salvando ? 'Salvando...' : 'Salvar'}
+          </button>
+          <button onClick={calcular} disabled={calculando}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded-lg text-xs font-semibold transition disabled:opacity-50">
+            {calculando ? 'Calculando...' : 'Calcular'}
+          </button>
+        </div>
+      </header>
+
+      <div className="pt-14 flex flex-1">
+
+        {/* ═══════════════ ABA MODELO ═══════════════ */}
+        {aba === 'modelo' && (
+          <div className="flex w-full">
+
+            {/* PAINEL ESQUERDO */}
+            <div className="w-80 border-r border-white/10 overflow-y-auto h-[calc(100vh-56px)] flex flex-col">
+
+              {/* SÍMBOLOS */}
+              <div className="p-4 border-b border-white/10">
+                <p className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-2">Símbolos</p>
+                <div className="flex flex-wrap gap-1">
+                  {SIMBOLOS.map(s => (
+                    <button key={s} type="button" onClick={() => inserirSimbolo(s)}
+                      className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 text-xs font-mono text-gray-300 hover:bg-white/15 hover:text-white transition">
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* PARÂMETROS */}
+              <div className="p-4 border-b border-white/10">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs font-semibold uppercase tracking-widest text-gray-500">Parâmetros</p>
+                  <button onClick={() => setParametros(p => [...p, { id: uid(), nome: '', valor: 0, descricao: '' }])}
+                    className="text-xs text-blue-400 hover:underline">+ Add</button>
+                </div>
+                <div className="space-y-2">
+                  {parametros.map((p, i) => (
+                    <div key={p.id} className="bg-white/5 border border-white/10 rounded-xl p-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <input id={`param-nome-${p.id}`} value={p.nome}
+                          onFocus={() => setInputFocus(`param-nome-${p.id}`)}
+                          onChange={e => { const n=[...parametros]; n[i].nome=e.target.value; setParametros(n) }}
+                          placeholder="nome" className="w-14 bg-transparent border-b border-white/20 text-xs font-mono text-white focus:outline-none focus:border-blue-500 pb-0.5" />
+                        <span className="text-gray-600 text-xs">=</span>
+                        <input type="number" value={p.valor}
+                          onChange={e => { const n=[...parametros]; n[i].valor=parseFloat(e.target.value)||0; setParametros(n) }}
+                          className="flex-1 bg-transparent border-b border-white/20 text-xs text-blue-300 focus:outline-none focus:border-blue-500 pb-0.5" />
+                        <button onClick={() => setParametros(parametros.filter((_,j)=>j!==i))}
+                          className="text-gray-600 hover:text-red-400 text-xs transition">×</button>
+                      </div>
+                      <input value={p.descricao}
+                        onChange={e => { const n=[...parametros]; n[i].descricao=e.target.value; setParametros(n) }}
+                        placeholder="descrição..." className="w-full bg-transparent text-xs text-gray-500 focus:outline-none placeholder:text-gray-700" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* VARIÁVEL LIVRE */}
+              <div className="p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <input type="checkbox" checked={varLivre.ativo} onChange={e => setVarLivre(v=>({...v,ativo:e.target.checked}))} className="w-3.5 h-3.5 accent-blue-500" />
+                  <p className="text-xs font-semibold uppercase tracking-widest text-gray-500">Variável Livre (gráfico)</p>
+                </div>
+                {varLivre.ativo && (
+                  <div className="space-y-2">
+                    {[
+                      { label: 'Var', value: varLivre.nome, onChange: (v:string) => setVarLivre(x=>({...x,nome:v})), type:'text' },
+                      { label: 'Min', value: String(varLivre.min), onChange: (v:string) => setVarLivre(x=>({...x,min:parseFloat(v)||0})), type:'number' },
+                      { label: 'Max', value: String(varLivre.max), onChange: (v:string) => setVarLivre(x=>({...x,max:parseFloat(v)||2000})), type:'number' },
+                    ].map(f => (
+                      <div key={f.label} className="flex items-center gap-2">
+                        <span className="text-xs text-gray-600 w-8">{f.label}:</span>
+                        <input type={f.type} value={f.value} onChange={e=>f.onChange(e.target.value)}
+                          className="flex-1 bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500" />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* PAINEL DIREITO — EQUAÇÕES */}
+            <div className="flex-1 overflow-y-auto h-[calc(100vh-56px)] p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-lg font-bold text-white">Equações do Modelo</h2>
+                <button onClick={() => setEquacoes(e => [...e, { id: uid(), numero: e.length+1, nome: '', variavel: '', expressao: '', descricao: '', valida: null }])}
+                  className="text-sm text-blue-400 hover:underline">+ Nova equação</button>
+              </div>
+
+              <div className="space-y-4">
+                {equacoes.map((eq, i) => (
+                  <div key={eq.id} className="bg-white/5 border border-white/10 rounded-2xl p-5">
+                    <div className="flex items-start gap-4">
+                      {/* Número */}
+                      <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-xs font-bold text-gray-400 flex-shrink-0 mt-1">
+                        ({eq.numero})
+                      </div>
+                      <div className="flex-1 space-y-3">
+                        {/* Nome da equação */}
+                        <input value={eq.nome}
+                          onChange={e => { const n=[...equacoes]; n[i].nome=e.target.value; setEquacoes(n) }}
+                          placeholder="Nome da equação (ex: Supermultiplicador Sraffiano)"
+                          className="w-full bg-transparent text-sm font-semibold text-white focus:outline-none placeholder:text-gray-600 border-b border-transparent focus:border-white/20 pb-1" />
+
+                        {/* Equação */}
+                        <div className="flex items-center gap-3">
+                          <input id={`eq-var-${eq.id}`} value={eq.variavel}
+                            onFocus={() => setInputFocus(`eq-var-${eq.id}`)}
+                            onChange={e => { const n=[...equacoes]; n[i].variavel=e.target.value; setEquacoes(n) }}
+                            placeholder="Y"
+                            className="w-12 bg-white/5 border border-white/10 rounded-lg px-2 py-2 text-sm font-mono text-white focus:outline-none focus:border-blue-500 text-center" />
+                          <span className="text-gray-500 font-mono text-lg">=</span>
+                          <input id={`eq-expr-${eq.id}`} value={eq.expressao}
+                            onFocus={() => setInputFocus(`eq-expr-${eq.id}`)}
+                            onChange={async e => {
+                              const n=[...equacoes]; n[i].expressao=e.target.value; setEquacoes(n)
+                              if (e.target.value.trim()) {
+                                try {
+                                  const res = await api.modelo.validar({ expressao: e.target.value, parametros: Object.fromEntries(parametros.map(p=>[p.nome,p.valor])) })
+                                  const nn=[...equacoes]; nn[i].valida=res.valido; setEquacoes(nn)
+                                } catch {}
+                              }
+                            }}
+                            placeholder="expressão matemática..."
+                            className={`flex-1 bg-white/5 border rounded-xl px-4 py-2 text-sm font-mono text-white focus:outline-none transition ${eq.valida === true ? 'border-green-500/40' : eq.valida === false ? 'border-red-500/40' : 'border-white/10 focus:border-blue-500'}`} />
+                          <button onClick={() => setEquacoes(equacoes.filter((_,j)=>j!==i))}
+                            className="text-gray-600 hover:text-red-400 transition text-lg">×</button>
+                        </div>
+
+                        {/* Descrição */}
+                        <input value={eq.descricao}
+                          onChange={e => { const n=[...equacoes]; n[i].descricao=e.target.value; setEquacoes(n) }}
+                          placeholder="Descrição teórica desta equação..."
+                          className="w-full bg-transparent text-xs text-gray-500 focus:outline-none placeholder:text-gray-700 italic" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ═══════════════ ABA NOTAS ═══════════════ */}
+        {aba === 'notas' && (
+          <div className="flex w-full">
+
+            {/* SIDEBAR DE SEÇÕES */}
+            <div className="w-56 border-r border-white/10 overflow-y-auto h-[calc(100vh-56px)] p-4">
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-xs font-semibold uppercase tracking-widest text-gray-500">Seções</p>
+                <button onClick={() => setSecoes(s => [...s, { id: uid(), titulo: 'Nova Seção', conteudo: '' }])}
+                  className="text-xs text-blue-400 hover:underline">+</button>
+              </div>
+              <div className="space-y-1">
+                {secoes.map((s, i) => (
+                  <div key={s.id} className="flex items-center gap-2 group">
+                    <button className="flex-1 text-left px-3 py-2 rounded-lg text-xs text-gray-400 hover:text-white hover:bg-white/10 transition truncate">
+                      {s.titulo || 'Seção sem título'}
+                    </button>
+                    <button onClick={() => setSecoes(secoes.filter((_,j)=>j!==i))}
+                      className="opacity-0 group-hover:opacity-100 text-gray-600 hover:text-red-400 text-xs transition">×</button>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-6 border-t border-white/10 pt-4">
+                <p className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-3">Referências</p>
+                <button onClick={() => setReferencias(r => [...r, { id: uid(), autor: '', ano: '', titulo: '', publicacao: '' }])}
+                  className="text-xs text-blue-400 hover:underline">+ Adicionar</button>
+              </div>
+            </div>
+
+            {/* EDITOR DE SEÇÕES */}
+            <div className="flex-1 overflow-y-auto h-[calc(100vh-56px)] p-8 max-w-4xl">
+              <div className="space-y-8">
+                {secoes.map((s, i) => (
+                  <div key={s.id}>
+                    <input value={s.titulo}
+                      onChange={e => { const n=[...secoes]; n[i].titulo=e.target.value; setSecoes(n) }}
+                      className="w-full bg-transparent text-xl font-bold text-white focus:outline-none border-b border-transparent focus:border-white/20 pb-1 mb-4" />
+                    <RichEditor
+                      content={s.conteudo}
+                      onChange={v => { const n=[...secoes]; n[i].conteudo=v; setSecoes(n) }}
+                      placeholder={`Escreva o conteúdo de "${s.titulo}" aqui...`}
+                    />
+                  </div>
+                ))}
+
+                {/* REFERÊNCIAS */}
+                {referencias.length > 0 && (
+                  <div>
+                    <h3 className="text-xl font-bold text-white mb-4 border-b border-white/10 pb-2">Referências</h3>
+                    <div className="space-y-3">
+                      {referencias.map((r, i) => (
+                        <div key={r.id} className="bg-white/5 border border-white/10 rounded-xl p-4 grid grid-cols-2 gap-3">
+                          {[
+                            { label: 'Autor(es)', key: 'autor', placeholder: 'Silva, J.' },
+                            { label: 'Ano', key: 'ano', placeholder: '2024' },
+                            { label: 'Título', key: 'titulo', placeholder: 'Título do trabalho' },
+                            { label: 'Publicação', key: 'publicacao', placeholder: 'Revista Economia, v.1' },
+                          ].map(f => (
+                            <div key={f.key}>
+                              <label className="text-xs text-gray-500 block mb-1">{f.label}</label>
+                              <input value={(r as any)[f.key]}
+                                onChange={e => { const n=[...referencias]; (n[i] as any)[f.key]=e.target.value; setReferencias(n) }}
+                                placeholder={f.placeholder}
+                                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500" />
+                            </div>
+                          ))}
+                          <div className="col-span-2 text-right">
+                            <button onClick={() => setReferencias(referencias.filter((_,j)=>j!==i))}
+                              className="text-xs text-red-400 hover:underline">Remover</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ═══════════════ ABA ANÁLISE ═══════════════ */}
+        {aba === 'analise' && (
+          <div className="flex-1 overflow-y-auto h-[calc(100vh-56px)] p-8">
+            {resultado ? (
+              <div className="space-y-6 max-w-5xl mx-auto">
+
+                {resultado.erros?.length > 0 && (
+                  <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4">
+                    <p className="text-xs font-semibold text-red-400 mb-2">Avisos:</p>
+                    {resultado.erros.map((e: string, i: number) => (
+                      <p key={i} className="text-xs text-red-300 font-mono">{e}</p>
+                    ))}
+                  </div>
+                )}
+
+                {/* Resultados */}
+                {Object.keys(resultado.valores).length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-4">Valores calculados</p>
+                    <div className="grid grid-cols-5 gap-3">
+                      {Object.entries(resultado.valores).map(([k, v]) => (
+                        <div key={k} className="bg-white/5 border border-white/10 rounded-xl p-4 text-center">
+                          <p className="text-xs font-mono text-gray-500 mb-1">{k}</p>
+                          <p className="text-xl font-bold text-white">
+                            {typeof v === 'number' ? (v as number).toFixed(3) : String(v)}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* LaTeX das equações */}
+                {Object.keys(resultado.latex).length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-4">Equações</p>
+                    <div className="bg-white/5 border border-white/10 rounded-xl p-6 space-y-3">
+                      {Object.entries(resultado.latex).map(([k, v], i) => (
+                        <div key={k} className="flex items-center gap-4">
+                          <span className="text-xs text-gray-600 w-6 flex-shrink-0">({i+1})</span>
+                          <p className="text-sm font-mono text-gray-300">{v as string}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Gráfico */}
+                {resultado.series && Object.keys(resultado.series).length > 1 && (
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-4">Gráfico</p>
+                    <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
+                      <Plot
+                        data={Object.entries(resultado.series)
+                          .filter(([k]) => k !== varLivre.nome)
+                          .map(([k, vals], i) => ({
+                            x: resultado.series![varLivre.nome],
+                            y: vals,
+                            type: 'scatter' as const,
+                            mode: 'lines' as const,
+                            name: k,
+                            line: { width: 2.5, color: ['#60a5fa','#f87171','#4ade80','#c084fc','#fb923c'][i%5] },
+                          })) as any}
+                        layout={{
+                          paper_bgcolor: 'transparent',
+                          plot_bgcolor:  'transparent',
+                          font: { family: 'Montserrat', color: '#9ca3af', size: 11 },
+                          xaxis: { title: varLivre.nome, gridcolor: 'rgba(255,255,255,0.05)', color: '#6b7280' },
+                          yaxis: { title: 'Valor',       gridcolor: 'rgba(255,255,255,0.05)', color: '#6b7280' },
+                          legend: { orientation: 'h', y: -0.2, font: { color: '#9ca3af' } },
+                          margin: { t: 20, b: 60, l: 50, r: 20 },
+                          height: 400,
+                        } as any}
+                        useResizeHandler style={{ width: '100%' }}
+                        config={{ displayModeBar: false }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="h-full flex items-center justify-center">
+                <div className="text-center">
+                  <p className="text-lg font-semibold text-white mb-2">Nenhuma análise ainda</p>
+                  <p className="text-sm text-gray-500 mb-6">Configure o modelo e clique em Calcular.</p>
+                  <button onClick={() => setAba('modelo')}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl text-sm font-semibold transition">
+                    Ir para o modelo
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ═══════════════ ABA EXPORTAR ═══════════════ */}
+        {aba === 'exportar' && (
+          <div className="flex-1 overflow-y-auto h-[calc(100vh-56px)] p-8">
+            <div className="max-w-2xl mx-auto space-y-6">
+              <h2 className="text-xl font-bold text-white">Exportar</h2>
+
+              <div className="grid grid-cols-2 gap-4">
+                <button onClick={exportarPDF}
+                  className="bg-white/5 border border-white/10 hover:bg-white/10 rounded-2xl p-6 text-left transition group">
+                  <p className="text-2xl mb-3">📄</p>
+                  <p className="font-semibold text-white mb-1">PDF Acadêmico</p>
+                  <p className="text-xs text-gray-500">Exporta notas, equações e resultados em formato de artigo</p>
+                </button>
+                <button onClick={exportarPDF}
+                  className="bg-white/5 border border-white/10 hover:bg-white/10 rounded-2xl p-6 text-left transition group">
+                  <p className="text-2xl mb-3">📊</p>
+                  <p className="font-semibold text-white mb-1">Dashboard Visual</p>
+                  <p className="text-xs text-gray-500">Exporta gráficos e resultados em formato visual</p>
+                </button>
+              </div>
+
+              {/* PREVIEW */}
+              <div id="exportar-conteudo" className="bg-[#0b0f19] border border-white/10 rounded-2xl p-8">
+                <div className="mb-6 pb-6 border-b border-white/10">
+                  <h1 className="text-2xl font-bold text-white mb-2">{tituloModelo}</h1>
+                  <p className="text-sm text-gray-500">OikosLab · {new Date().toLocaleDateString('pt-BR')}</p>
+                </div>
+
+                {secoes.filter(s => s.conteudo).map(s => (
+                  <div key={s.id} className="mb-6">
+                    <h2 className="text-lg font-semibold text-white mb-3">{s.titulo}</h2>
+                    <div className="text-sm text-gray-300 leading-relaxed"
+                      dangerouslySetInnerHTML={{ __html: s.conteudo }} />
+                  </div>
+                ))}
+
+                {equacoes.length > 0 && (
+                  <div className="mb-6">
+                    <h2 className="text-lg font-semibold text-white mb-3">Modelo</h2>
+                    {equacoes.map(eq => (
+                      <div key={eq.id} className="flex items-center gap-4 mb-2">
+                        <span className="text-gray-600 text-sm">({eq.numero})</span>
+                        <span className="font-mono text-sm text-gray-300">{eq.variavel} = {eq.expressao}</span>
+                        {eq.descricao && <span className="text-xs text-gray-600 italic">{eq.descricao}</span>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {referencias.length > 0 && (
+                  <div>
+                    <h2 className="text-lg font-semibold text-white mb-3">Referências</h2>
+                    {referencias.map(r => (
+                      <p key={r.id} className="text-sm text-gray-400 mb-1">
+                        {r.autor} ({r.ano}). <em>{r.titulo}</em>. {r.publicacao}.
+                      </p>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+      </div>
+    </main>
+  )
+}
