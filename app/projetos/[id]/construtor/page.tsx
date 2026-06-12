@@ -1,23 +1,22 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { api } from '@/lib/api'
 import dynamic from 'next/dynamic'
 import { RichEditor } from '@/components/ui/rich-editor'
+import { MathEditor } from '@/components/ui/math-editor'
 
 const Plot = dynamic(() => import('react-plotly.js'), { ssr: false })
 
 type Parametro = { id: string; nome: string; valor: number; descricao: string }
-type Equacao   = { id: string; numero: number; nome: string; variavel: string; expressao: string; descricao: string; valida: boolean | null }
+type Equacao   = { id: string; numero: number; nome: string; variavel: string; expressao: string; latex: string; descricao: string; valida: boolean | null }
 type Secao     = { id: string; titulo: string; conteudo: string }
 type Referencia = { id: string; autor: string; ano: string; titulo: string; publicacao: string }
 
 function uid() { return Math.random().toString(36).slice(2) }
-
-const SIMBOLOS = ['α','β','γ','δ','ε','λ','μ','π','σ','τ','φ','ω','Δ','∑','∫','∂','∞','≈','≤','≥','→','↑','↓','Ŷ','Ȳ']
 
 export default function ConstrutorPage() {
   const params   = useParams()
@@ -30,7 +29,6 @@ export default function ConstrutorPage() {
   const [calculando, setCalculando] = useState(false)
   const [resultado,  setResultado]  = useState<any>(null)
   const [aba,        setAba]        = useState<'modelo' | 'notas' | 'analise' | 'exportar'>('modelo')
-  const [inputFocus, setInputFocus] = useState<string | null>(null)
 
   // Estado do modelo
   const [tituloModelo, setTituloModelo] = useState('')
@@ -41,7 +39,7 @@ export default function ConstrutorPage() {
     { id: uid(), nome: 't', valor: 0.25, descricao: 'Alíquota de imposto' },
   ])
   const [equacoes,    setEquacoes]    = useState<Equacao[]>([
-    { id: uid(), numero: 1, nome: 'Supermultiplicador', variavel: 'Y', expressao: '(1/(1-(1-m)*(c*(1-t)+h)))*Z', descricao: 'Produto determinado pelos gastos autônomos', valida: null },
+    { id: uid(), numero: 1, nome: 'Supermultiplicador', variavel: 'Y', expressao: '(1/(1-(1-m)*(c*(1-t)+h)))*Z', latex: '', descricao: 'Produto determinado pelos gastos autônomos', valida: null },
   ])
   const [varLivre,   setVarLivre]    = useState({ nome: 'Z', min: 0, max: 2000, ativo: false })
 
@@ -68,18 +66,6 @@ export default function ConstrutorPage() {
     }
     carregar()
   }, [params.id])
-
-  function inserirSimbolo(simbolo: string) {
-    if (!inputFocus) return
-    const el = document.getElementById(inputFocus) as HTMLInputElement
-    if (!el) return
-    const start = el.selectionStart || 0
-    const end   = el.selectionEnd   || 0
-    const novo  = el.value.slice(0, start) + simbolo + el.value.slice(end)
-    el.value = novo
-    el.dispatchEvent(new Event('input', { bubbles: true }))
-    setTimeout(() => el.setSelectionRange(start + 1, start + 1), 0)
-  }
 
   async function calcular() {
     setCalculando(true)
@@ -174,19 +160,6 @@ export default function ConstrutorPage() {
             {/* PAINEL ESQUERDO */}
             <div className="w-80 border-r border-white/10 overflow-y-auto h-[calc(100vh-56px)] flex flex-col">
 
-              {/* SÍMBOLOS */}
-              <div className="p-4 border-b border-white/10">
-                <p className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-2">Símbolos</p>
-                <div className="flex flex-wrap gap-1">
-                  {SIMBOLOS.map(s => (
-                    <button key={s} type="button" onClick={() => inserirSimbolo(s)}
-                      className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 text-xs font-mono text-gray-300 hover:bg-white/15 hover:text-white transition">
-                      {s}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
               {/* PARÂMETROS */}
               <div className="p-4 border-b border-white/10">
                 <div className="flex items-center justify-between mb-3">
@@ -198,8 +171,7 @@ export default function ConstrutorPage() {
                   {parametros.map((p, i) => (
                     <div key={p.id} className="bg-white/5 border border-white/10 rounded-xl p-3">
                       <div className="flex items-center gap-2 mb-2">
-                        <input id={`param-nome-${p.id}`} value={p.nome}
-                          onFocus={() => setInputFocus(`param-nome-${p.id}`)}
+                        <input value={p.nome}
                           onChange={e => { const n=[...parametros]; n[i].nome=e.target.value; setParametros(n) }}
                           placeholder="nome" className="w-14 bg-transparent border-b border-white/20 text-xs font-mono text-white focus:outline-none focus:border-blue-500 pb-0.5" />
                         <span className="text-gray-600 text-xs">=</span>
@@ -245,7 +217,7 @@ export default function ConstrutorPage() {
             <div className="flex-1 overflow-y-auto h-[calc(100vh-56px)] p-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-lg font-bold text-white">Equações do Modelo</h2>
-                <button onClick={() => setEquacoes(e => [...e, { id: uid(), numero: e.length+1, nome: '', variavel: '', expressao: '', descricao: '', valida: null }])}
+                <button onClick={() => setEquacoes(e => [...e, { id: uid(), numero: e.length+1, nome: '', variavel: '', expressao: '', latex: '', descricao: '', valida: null }])}
                   className="text-sm text-blue-400 hover:underline">+ Nova equação</button>
               </div>
 
@@ -265,28 +237,26 @@ export default function ConstrutorPage() {
                           className="w-full bg-transparent text-sm font-semibold text-white focus:outline-none placeholder:text-gray-600 border-b border-transparent focus:border-white/20 pb-1" />
 
                         {/* Equação */}
-                        <div className="flex items-center gap-3">
-                          <input id={`eq-var-${eq.id}`} value={eq.variavel}
-                            onFocus={() => setInputFocus(`eq-var-${eq.id}`)}
+                        <div className="flex items-start gap-3">
+                          <input value={eq.variavel}
                             onChange={e => { const n=[...equacoes]; n[i].variavel=e.target.value; setEquacoes(n) }}
                             placeholder="Y"
-                            className="w-12 bg-white/5 border border-white/10 rounded-lg px-2 py-2 text-sm font-mono text-white focus:outline-none focus:border-blue-500 text-center" />
-                          <span className="text-gray-500 font-mono text-lg">=</span>
-                          <input id={`eq-expr-${eq.id}`} value={eq.expressao}
-                            onFocus={() => setInputFocus(`eq-expr-${eq.id}`)}
-                            onChange={async e => {
-                              const n=[...equacoes]; n[i].expressao=e.target.value; setEquacoes(n)
-                              if (e.target.value.trim()) {
-                                try {
-                                  const res = await api.modelo.validar({ expressao: e.target.value, parametros: Object.fromEntries(parametros.map(p=>[p.nome,p.valor])) })
-                                  const nn=[...equacoes]; nn[i].valida=res.valido; setEquacoes(nn)
-                                } catch {}
-                              }
-                            }}
-                            placeholder="expressão matemática..."
-                            className={`flex-1 bg-white/5 border rounded-xl px-4 py-2 text-sm font-mono text-white focus:outline-none transition ${eq.valida === true ? 'border-green-500/40' : eq.valida === false ? 'border-red-500/40' : 'border-white/10 focus:border-blue-500'}`} />
+                            className="w-12 bg-white/5 border border-white/10 rounded-lg px-2 py-2 text-sm font-mono text-white focus:outline-none focus:border-blue-500 text-center mt-1" />
+                          <span className="text-gray-500 font-mono text-lg mt-2">=</span>
+                          <div className="flex-1">
+                            <MathEditor
+                              value={eq.expressao}
+                              onChange={(latex, ascii) => {
+                                const n = [...equacoes]
+                                n[i].expressao = ascii
+                                n[i].latex = latex
+                                setEquacoes(n)
+                              }}
+                              placeholder="Monte sua equação..."
+                            />
+                          </div>
                           <button onClick={() => setEquacoes(equacoes.filter((_,j)=>j!==i))}
-                            className="text-gray-600 hover:text-red-400 transition text-lg">×</button>
+                            className="text-gray-600 hover:text-red-400 transition text-lg mt-2">×</button>
                         </div>
 
                         {/* Descrição */}
