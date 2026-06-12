@@ -29,9 +29,9 @@ const TIPOS = [
     titulo: 'Construtor de Funções',
     desc: 'Defina suas próprias equações econômicas e analise o comportamento do modelo resultante.',
     cor: 'border-t-purple-500/50',
-    tag: 'Em breve',
-    tagCor: 'bg-white/5 text-gray-500 border-white/10',
-    disponivel: false,
+    tag: 'Disponível',
+    tagCor: 'bg-purple-500/20 text-purple-300 border-purple-500/20',
+    disponivel: true,
   },
 ]
 
