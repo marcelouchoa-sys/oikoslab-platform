@@ -21,7 +21,6 @@ export default function PerfilPage() {
   const [bio,        setBio]        = useState('')
   const [lattes,     setLattes]     = useState('')
   const [linkedin,   setLinkedin]   = useState('')
-  const [github,     setGithub]     = useState('')
   const [avatarUrl,  setAvatarUrl]  = useState('')
   const [stats,      setStats]      = useState({ projetos: 0, simulacoes: 0 })
 
@@ -44,7 +43,6 @@ export default function PerfilPage() {
         setBio(perfil.bio || '')
         setLattes(perfil.lattes || '')
         setLinkedin(perfil.linkedin || '')
-        setGithub(perfil.github || '')
         setAvatarUrl(perfil.avatar_url || '')
       } else {
         setNome(user.user_metadata?.nome || user.email?.split('@')[0] || '')
@@ -111,7 +109,6 @@ export default function PerfilPage() {
         bio,
         lattes,
         linkedin,
-        github,
       })
 
     if (error) {
@@ -182,7 +179,7 @@ export default function PerfilPage() {
               )}
 
               {/* Links sociais */}
-              {(lattes || linkedin || github) && (
+              {(lattes || linkedin) && (
                 <div className="flex items-center justify-center gap-3 mt-4 pt-4 border-t border-white/10">
                   {lattes && (
                     <a href={lattes} target="_blank" rel="noopener noreferrer"
@@ -194,12 +191,6 @@ export default function PerfilPage() {
                     <a href={linkedin} target="_blank" rel="noopener noreferrer"
                       className="text-xs px-3 py-1.5 rounded-full bg-blue-500/10 text-blue-300 hover:bg-blue-500/20 transition-colors">
                       LinkedIn
-                    </a>
-                  )}
-                  {github && (
-                    <a href={github} target="_blank" rel="noopener noreferrer"
-                      className="text-xs px-3 py-1.5 rounded-full bg-purple-500/10 text-purple-300 hover:bg-purple-500/20 transition-colors">
-                      GitHub
                     </a>
                   )}
                 </div>
@@ -278,13 +269,6 @@ export default function PerfilPage() {
                       <input type="url" value={linkedin} onChange={e => setLinkedin(e.target.value)}
                         placeholder="https://linkedin.com/in/..."
                         className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-blue-500 transition-colors" />
-                    </div>
-
-                    <div>
-                      <label className="text-sm font-medium text-white block mb-1.5">GitHub</label>
-                      <input type="url" value={github} onChange={e => setGithub(e.target.value)}
-                        placeholder="https://github.com/..."
-                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-purple-500 transition-colors" />
                     </div>
                   </div>
                 </div>
