@@ -71,10 +71,33 @@ export default function ConstrutorPage() {
     setCalculando(true)
     setResultado(null)
     try {
+      const parametrosValidos = parametros.filter(
+        p => p.nome.trim() !== ''
+      )
+      const equacoesValidas = equacoes.filter(
+        e =>
+          e.variavel.trim() !== '' &&
+          e.expressao.trim() !== ''
+      )
       const res = await api.modelo.resolver({
-        parametros: parametros.map(p => ({ nome: p.nome, valor: p.valor, descricao: p.descricao })),
-        equacoes:   equacoes.map(e => ({ nome: e.nome, variavel: e.variavel, expressao: e.expressao })),
-        variavel_livre: varLivre.ativo ? { nome: varLivre.nome, min: varLivre.min, max: varLivre.max, pontos: 300 } : null,
+        parametros: parametrosValidos.map(p => ({
+          nome: p.nome.trim(),
+          valor: p.valor,
+          descricao: p.descricao
+        })),
+        equacoes: equacoesValidas.map(e => ({
+          nome: e.nome,
+          variavel: e.variavel.trim(),
+          expressao: e.expressao.trim()
+        })),
+        variavel_livre: varLivre.ativo
+          ? {
+              nome: varLivre.nome,
+              min: varLivre.min,
+              max: varLivre.max,
+              pontos: 300
+            }
+          : null,
       })
       setResultado(res)
       setAba('analise')
