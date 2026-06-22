@@ -8,6 +8,7 @@ import { api } from '@/lib/api'
 import dynamic from 'next/dynamic'
 import { RichEditor } from '@/components/ui/rich-editor'
 import { MathEditor } from '@/components/ui/math-editor'
+import { OikosMath } from '@/components/ui/oikos-math'
 
 const Plot = dynamic(() => import('react-plotly.js'), { ssr: false })
 
@@ -510,11 +511,13 @@ export default function ConstrutorPage() {
                 {resultado.latex && Object.keys(resultado.latex).length > 0 && (
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-4">Equações</p>
-                    <div className="bg-white/5 border border-white/10 rounded-xl p-6 space-y-3">
+                    <div className="bg-white/5 border border-white/10 rounded-xl p-6 space-y-4">
                       {Object.entries(resultado.latex).map(([k, v], i) => (
-                        <div key={k} className="flex items-center gap-4">
-                          <span className="text-xs text-gray-600 w-6 flex-shrink-0">({i+1})</span>
-                          <p className="text-sm font-mono text-gray-300">{v as string}</p>
+                        <div key={k} className="flex items-start gap-4">
+                          <span className="text-xs text-gray-600 w-6 flex-shrink-0 mt-1">({i+1})</span>
+                          <div className="flex-1 text-white overflow-x-auto [&_.katex]:text-white [&_.katex-display]:my-0">
+                            <OikosMath latex={`${k} = ${v as string}`} block />
+                          </div>
                         </div>
                       ))}
                     </div>
